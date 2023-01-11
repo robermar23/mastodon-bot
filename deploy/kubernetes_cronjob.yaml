@@ -1,0 +1,91 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: mastodon-bot-kratos-post-from-dropbox
+spec:
+  concurrencyPolicy: Forbid
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      backoffLimit: 3
+      template:
+        spec:
+          activeDeadlineSeconds: 120
+          containers:
+          - command:
+            - /bin/bash
+            - '-c'
+            - |
+                mastodonbotcli post \
+                  "$mastodon_host" \
+                  "$mastodon_client_key" \
+                  "$mastodon_client_secret" \
+                  "$mastodon_access_token" \
+                  "$dropbox_client_id" \
+                  "$dropbox_client_secret" \
+                  "$dropbox_refresh_token" \
+                  "$dropbox_folder" \
+                  "$open_ai_api_key" \
+                  "a phrase a dog might say to itself if it were describing itself in a picture"
+            image: robermar2/mastodon-bot-cli:v0.2.0
+            imagePullPolicy: IfNotPresent
+            name: mastodon-post
+            env:
+              - name: mastodon_host
+                value: "robermar.social"
+              - name: mastodon_client_key
+                valueFrom:
+                  secretKeyRef:
+                    name: mastodon
+                    key: mastodon_client_key
+              - name: mastodon_client_secret
+                valueFrom:
+                  secretKeyRef:
+                    name: mastodon
+                    key: mastodon_client_secret
+              - name: mastodon_access_token
+                valueFrom:
+                  secretKeyRef:
+                    name: mastodon
+                    key: mastodon_access_token
+              - name: dropbox_client_id
+                valueFrom:
+                  secretKeyRef:
+                    name: mastodon
+                    key: dropbox_client_id
+              - name: dropbox_client_secret
+                valueFrom:
+                  secretKeyRef:
+                    name: mastodon
+                    key: dropbox_client_secret
+              - name: dropbox_refresh_token
+                valueFrom:
+                  secretKeyRef:
+                    name: mastodon
+                    key: dropbox_refresh_token
+              - name: open_ai_api_key
+                valueFrom:
+                  secretKeyRef:
+                    name: mastodon
+                    key: open_ai_api_key
+              - name: dropbox_folder
+                value: "mastodon-bot"
+            resources:
+              requests:
+                memory: 100Mi
+                cpu: 100m
+              limits:
+                memory: 500Mi
+                cpu: 500m
+            terminationMessagePath: /dev/termination-log
+            terminationMessagePolicy: File
+          dnsPolicy: ClusterFirst
+          nodeSelector:
+            node-role.kubernetes.io/worker: ""
+          restartPolicy: Never
+          schedulerName: default-scheduler
+          securityContext: {}
+          terminationGracePeriodSeconds: 60
+  schedule: '@daily'
+  successfulJobsHistoryLimit: 1
+  suspend: false

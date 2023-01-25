@@ -10,7 +10,7 @@ from mastodon import Mastodon
 from click.core import Context
 from rich.prompt import Prompt
 from src import console
-from src.util import filter_words, remove_word, split_string
+from src.util import filter_words, remove_word, split_string, error_info, download_image
 from src.external import openai
 from bs4 import BeautifulSoup
 
@@ -19,7 +19,6 @@ class ListenerResponseType(enum.Enum):
     REVERSE_STRING = 1
     OPEN_AI_CHAT = 2
     OPEN_AI_IMAGE = 3
-
 
 class Listener(mastodon.StreamListener):
     def __init__(self, mastodon_api, openai_api_key, response_type, debugging):
@@ -34,6 +33,7 @@ class Listener(mastodon.StreamListener):
             click.echo(f"on_update: {status}")
 
         convo_id = None
+        image_url = None
 
         if "in_reply_to_id" in status and status["in_reply_to_id"] != "":
             convo_id = status["in_reply_to_id"]
@@ -47,17 +47,21 @@ class Listener(mastodon.StreamListener):
 
             inner_content = BeautifulSoup(status["content"], "html.parser").text
 
+            if "media_attachments" in status and len(status["media_attachments"]) > 0:
+                image_url = status["media_attachments"][0].url
+
             if self.debugging:
                 click.echo(f"on_update: { convo_id} \n content: {inner_content}")
 
             if not status["account"]["bot"]:
-                self.respond(inner_content, convo_id)
+                self.respond(inner_content, convo_id, image_url)
 
     def on_notification(self, notification):
         if self.debugging:
             click.echo(f"on_notification: {notification}")
 
         convo_id = None
+        image_url = None
 
         if "in_reply_to_id" in notification:
             convo_id = notification["status"]["in_reply_to_id"]
@@ -75,17 +79,21 @@ class Listener(mastodon.StreamListener):
                 notification["status"]["content"], "html.parser"
             ).text
 
+            if "media_attachments" in notification["status"] and len(notification["status"]["media_attachments"]) > 0:
+                image_url = notification["status"]["media_attachments"][0].url
+
             if self.debugging:
                 click.echo(f"on_notification: { convo_id} \n content: {inner_content}")
 
             if not notification["account"]["bot"]:
-                self.respond(inner_content, convo_id)
+                self.respond(inner_content, convo_id, image_url)
 
     def on_conversation(self, conversation):
         if self.debugging:
             click.echo(f"on_conversation: {conversation}")
 
         convo_id = None
+        image_url = None
 
         if "status" in conversation:
             if "in_reply_to_id" in conversation["status"]:
@@ -103,13 +111,16 @@ class Listener(mastodon.StreamListener):
                 conversation["status"]["content"], "html.parser"
             ).text
 
+            if "media_attachments" in conversation["status"] and len(conversation["status"]["media_attachments"]) > 0:
+                image_url = conversation["status"]["media_attachments"][0].url
+
             if self.debugging:
                 click.echo(f"on_conversation: { convo_id} \n content: {inner_content}")
 
             if not conversation["account"]["bot"]:
-                self.respond(inner_content, convo_id)
+                self.respond(inner_content, convo_id, image_url)
 
-    def respond(self, content, convo_id):
+    def respond(self, content, convo_id, image_url):
         words_to_filter = filter_words(content, "@")
         filtered_content = content
         response_content = None
@@ -129,17 +140,7 @@ class Listener(mastodon.StreamListener):
             response_content = chat_response
 
         if self.response_type == ListenerResponseType.OPEN_AI_IMAGE:
-            image_ai = openai.OpenAiImage(self.openai_api_key)
-            image_result = image_ai.create(filtered_content)
-
-            image_name = filtered_content.replace(" ", "_") + ".png"
-            ai_media_post = self.mastodon_api.media_post(
-                media_file=image_result,
-                file_name=image_name,
-                mime_type="mime_type='image/png'",
-            )
-            media_ids.append(ai_media_post["id"])
-            response_content = f"Image Generated from: {filtered_content}"
+            response_content = self.get_image_response_content(image_url, filtered_content, media_ids)
 
         if self.debugging:
             click.echo(f"status_post: {response_content}")
@@ -160,10 +161,36 @@ class Listener(mastodon.StreamListener):
         if self.debugging:
             click.echo("\n")
 
+    def get_image_response_content(self, image_url, filtered_content, media_ids):
+        
+        image_ai = openai.OpenAiImage(self.openai_api_key)
+
+        if image_url:
+            image_byes = download_image(self.debugging, image_url)
+
+        if image_url and filtered_content == "variation":
+            image_result = image_ai.variation(debugging=self.debugging, image=image_byes)
+
+        elif image_url and filtered_content == "edit":
+            click.echo("Not yet implemented")
+
+        else:
+            image_result = image_ai.create(filtered_content)
+
+        image_name = filtered_content.replace(" ", "_") + ".png"
+        ai_media_post = self.mastodon_api.media_post(
+                media_file=image_result,
+                file_name=image_name,
+                mime_type="mime_type='image/png'",
+            )
+        media_ids.append(ai_media_post["id"])
+        response_content = f"Image Generated from: {filtered_content}"
+        return response_content
+
 
 @click.command(
     "listen",
-    short_help="Listen for all events in a blocking manner and respond based off of params",
+    short_help="Listen for all events in a blocking manner and respond based off of the paramaters you pass",
 )
 @click.pass_context
 @click.argument("mastodon_host", required=True, type=click.STRING)
@@ -205,4 +232,4 @@ def listen(
         )
 
     except Exception as e:
-        click.echo(f"unknow ListenerResponseType: {response_type}")
+        click.echo(error_info(e))

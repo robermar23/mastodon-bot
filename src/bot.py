@@ -13,12 +13,3 @@ re_mastodon = re.compile(
 re_link = re.compile(
     r"^(?:https?://)?[\w.-]+(?:\.[\w\.-]+)+[\w\-\._~:/?#[\]@!\$&'\(\)\*\+,;=.]+$")
 
-def error_info(e):
-    """
-    https://stackoverflow.com/a/1278740
-    :param exception
-    :returns type, file, and line number
-    """
-    exc_type, exc_obj, exc_tb = sys.exc_info()
-    fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-    return exc_type, fname, exc_tb.tb_lineno

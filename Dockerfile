@@ -5,7 +5,7 @@ RUN apk update && apk add --no-cache python3-dev \
                           python3-setuptools \
                           gcc \
                           libc-dev \
-                          libffi-dev \
+                          libffi-dev
 WORKDIR /app
 
 COPY requirements/requirements.txt ./

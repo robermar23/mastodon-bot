@@ -12,4 +12,4 @@ def init():
     """
     CLI Initialization demo.
     """
-    console.print(WELCOME_MESSAGE)
+    click.echo(WELCOME_MESSAGE)

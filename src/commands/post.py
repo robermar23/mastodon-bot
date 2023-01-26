@@ -4,14 +4,11 @@ CLI Post to Mastodon.  Source of post based off of parameters passed command.
 import click
 import random
 import mimetypes
+import logging
 
 from mastodon import Mastodon
-from click.core import Context
-from rich.prompt import Prompt
-from src import console
 from src.external import dropbox
 from src.external import openai
-
 
 @click.command("post", short_help="Post content to a mastodon instance")
 @click.pass_context
@@ -43,17 +40,15 @@ def post(
     """
 
     result = []
-    debugging: bool = ctx.obj["debugging"]
-
-    if debugging:
-        click.echo(mastodon_host)
-        click.echo(mastodon_client_id)
-        click.echo(mastodon_client_secret)
-        click.echo(mastodon_access_token)
-        click.echo(dropbox_client_id)
-        click.echo(dropbox_client_secret)
-        click.echo(dropbox_refresh_token)
-        click.echo(dropbox_folder)
+    
+    logging.debug(mastodon_host)
+    logging.debug(mastodon_client_id)
+    logging.debug(mastodon_client_secret)
+    logging.debug(mastodon_access_token)
+    logging.debug(dropbox_client_id)
+    logging.debug(dropbox_client_secret)
+    logging.debug(dropbox_refresh_token)
+    logging.debug(dropbox_folder)
 
     mastodon_api = Mastodon(
         client_id=mastodon_client_id,
@@ -68,8 +63,8 @@ def post(
         and dropbox_refresh_token
         and dropbox_folder
     ):
-        if debugging:
-            click.echo("Have dropbox token, processing for dropbox source...")
+        
+        logging.debug("Have dropbox token, processing for dropbox source...")
 
         listing = dropbox.get_folder_files(
             client_id=dropbox_client_id,
@@ -77,14 +72,12 @@ def post(
             refresh_token=dropbox_refresh_token,
             folder=dropbox_folder,
         )
-
-        if debugging:
-            click.echo(f"Found {len(listing)} files in {dropbox_folder}")
+        
+        logging.debug(f"Found {len(listing)} files in {dropbox_folder}")
 
         random_file = random.choice(list(listing.keys()))
 
-        if debugging:
-            click.echo(f"randomly chose: {random_file}")
+        logging.debug(f"randomly chose: {random_file}")
 
         file_data = dropbox.get_file_data(
             client_id=dropbox_client_id,
@@ -96,8 +89,8 @@ def post(
         )
 
         mime_type = mimetypes.guess_type(random_file)
-        if debugging:
-            click.echo(f"guess mime_type: {mime_type}")
+        
+        logging.debug(f"guessed mime_type: {mime_type}")
 
         # the binary data returned from dropbox get_file_data can be passed directly to media_file parm for mastodon media_post
         media = mastodon_api.media_post(
@@ -120,8 +113,7 @@ def post(
             spoiler_text=None,
         )
 
-        if debugging:
-            click.echo(f"status_post: {status_post}")
+        logging.debug(f"status_post: {status_post}")
 
         result.append(toot["url"])
 

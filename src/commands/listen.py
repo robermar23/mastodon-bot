@@ -5,11 +5,9 @@ import click
 import mastodon
 import enum
 import time
+import logging
 
 from mastodon import Mastodon
-from click.core import Context
-from rich.prompt import Prompt
-from src import console
 from src.util import filter_words, remove_word, split_string, error_info, download_image
 from src.external import openai
 from bs4 import BeautifulSoup
@@ -21,16 +19,15 @@ class ListenerResponseType(enum.Enum):
     OPEN_AI_IMAGE = 3
 
 class Listener(mastodon.StreamListener):
-    def __init__(self, mastodon_api, openai_api_key, response_type, debugging):
+    def __init__(self, mastodon_api, openai_api_key, response_type):
         self.mastodon_api = mastodon_api
         self.openai_api_key = openai_api_key
         self.response_type = response_type
-        self.debugging = debugging
-        click.echo(f"{self.response_type}, Listening...")
+        logging.info(f"{self.response_type}, Listening...")
 
     def on_update(self, status):
-        if self.debugging:
-            click.echo(f"on_update: {status}")
+        
+        logging.debug(f"on_update: {status}")
 
         convo_id = None
         image_url = None
@@ -42,23 +39,25 @@ class Listener(mastodon.StreamListener):
             convo_id = status["id"]
 
         if "content" in status:
-            if self.debugging:
-                click.echo(f"pre BeautifulSoup content: {status['content']}")
+            
+            logging.debug(f"pre BeautifulSoup content: {status['content']}")
 
             inner_content = BeautifulSoup(status["content"], "html.parser").text
 
             if "media_attachments" in status and len(status["media_attachments"]) > 0:
                 image_url = status["media_attachments"][0].url
+                logging.debug(f"image_url: {image_url}")
 
-            if self.debugging:
-                click.echo(f"on_update: { convo_id} \n content: {inner_content}")
+            logging.info(f"on_update: { convo_id} \n content: {inner_content}")
 
             if not status["account"]["bot"]:
                 self.respond(inner_content, convo_id, image_url)
+            else:
+                logging.debug("i'm a bot, so not responding")
 
     def on_notification(self, notification):
-        if self.debugging:
-            click.echo(f"on_notification: {notification}")
+        
+        logging.debug(f"on_notification: {notification}")
 
         convo_id = None
         image_url = None
@@ -70,10 +69,9 @@ class Listener(mastodon.StreamListener):
             convo_id = notification["status"]["id"]
 
         if "status" in notification:
-            if self.debugging:
-                click.echo(
-                    f"pre BeautifulSoup content: {notification['status']['content']}"
-                )
+            logging.debug(
+                f"pre BeautifulSoup content: {notification['status']['content']}"
+            )
 
             inner_content = BeautifulSoup(
                 notification["status"]["content"], "html.parser"
@@ -81,16 +79,18 @@ class Listener(mastodon.StreamListener):
 
             if "media_attachments" in notification["status"] and len(notification["status"]["media_attachments"]) > 0:
                 image_url = notification["status"]["media_attachments"][0].url
+                logging.debug(f"image_url: {image_url}")
 
-            if self.debugging:
-                click.echo(f"on_notification: { convo_id} \n content: {inner_content}")
+            logging.info(f"on_notification: { convo_id} \n content: {inner_content}")
 
             if not notification["account"]["bot"]:
                 self.respond(inner_content, convo_id, image_url)
+            else:
+                logging.debug("i'm a bot, so not responding")
 
     def on_conversation(self, conversation):
-        if self.debugging:
-            click.echo(f"on_conversation: {conversation}")
+        
+        logging.debug(f"on_conversation: {conversation}")
 
         convo_id = None
         image_url = None
@@ -102,10 +102,9 @@ class Listener(mastodon.StreamListener):
             if convo_id == None:
                 convo_id = conversation["status"]["id"]
 
-            if self.debugging:
-                click.echo(
-                    f"pre BeautifulSoup content: {conversation['status']['content']}"
-                )
+            logging.debug(
+                f"pre BeautifulSoup content: {conversation['status']['content']}"
+            )
 
             inner_content = BeautifulSoup(
                 conversation["status"]["content"], "html.parser"
@@ -113,12 +112,14 @@ class Listener(mastodon.StreamListener):
 
             if "media_attachments" in conversation["status"] and len(conversation["status"]["media_attachments"]) > 0:
                 image_url = conversation["status"]["media_attachments"][0].url
+                logging.debug(f"image_url: {image_url}")
 
-            if self.debugging:
-                click.echo(f"on_conversation: { convo_id} \n content: {inner_content}")
+            logging.info(f"on_conversation: { convo_id} \n content: {inner_content}")
 
             if not conversation["account"]["bot"]:
                 self.respond(inner_content, convo_id, image_url)
+            else:
+                logging.debug("i'm a bot, so not responding")
 
     def respond(self, content, convo_id, image_url):
         words_to_filter = filter_words(content, "@")
@@ -128,6 +129,8 @@ class Listener(mastodon.StreamListener):
 
         for word in words_to_filter:
             filtered_content = remove_word(string=filtered_content, word=word)
+        
+        logging.debug(f"responding with {self.response_type}")
 
         if self.response_type == ListenerResponseType.REVERSE_STRING:
             response_content = filtered_content[::-1]
@@ -142,8 +145,7 @@ class Listener(mastodon.StreamListener):
         if self.response_type == ListenerResponseType.OPEN_AI_IMAGE:
             response_content = self.get_image_response_content(image_url, filtered_content, media_ids)
 
-        if self.debugging:
-            click.echo(f"status_post: {response_content}")
+        logging.debug(f"status_post: {response_content}")
 
         split_response_content = split_string(response_content, 500)
         for split_content in split_response_content:
@@ -155,29 +157,30 @@ class Listener(mastodon.StreamListener):
                 in_reply_to_id=convo_id,
                 media_ids=media_ids,
             )
-            click.echo(toot["url"])
+            logging.debug(toot["url"])
             time.sleep(1)
 
-        if self.debugging:
-            click.echo("\n")
+        logging.debug("\n")
 
     def get_image_response_content(self, image_url, filtered_content, media_ids):
         
         image_ai = openai.OpenAiImage(self.openai_api_key)
 
         if image_url:
-            image_byes = download_image(self.debugging, image_url)
+            image_byes = download_image(image_url)
 
         if image_url and filtered_content == "variation":
-            image_result = image_ai.variation(debugging=self.debugging, image=image_byes)
+            image_result = image_ai.variation(image=image_byes)
 
         elif image_url and filtered_content == "edit":
-            click.echo("Not yet implemented")
+            logging.debug("Not yet implemented")
 
         else:
             image_result = image_ai.create(filtered_content)
 
         image_name = filtered_content.replace(" ", "_") + ".png"
+        logging.debug(f"posting media to mastoton with name {image_name}")
+
         ai_media_post = self.mastodon_api.media_post(
                 media_file=image_result,
                 file_name=image_name,
@@ -212,6 +215,12 @@ def listen(
     CLI Listen to Mastodon User in a blocking manner
     """
 
+    logging.debug(mastodon_host)
+    logging.debug(mastodon_client_id)
+    logging.debug(mastodon_client_secret)
+    logging.debug(mastodon_access_token)
+    logging.debug(response_type)
+
     mastodon_api = Mastodon(
         client_id=mastodon_client_id,
         client_secret=mastodon_client_secret,
@@ -227,9 +236,8 @@ def listen(
                 mastodon_api=mastodon_api,
                 openai_api_key=openai_api_key,
                 response_type=response_type_value,
-                debugging=ctx.obj["debugging"],
             )
         )
 
     except Exception as e:
-        click.echo(error_info(e))
+        logging.error(error_info(e))

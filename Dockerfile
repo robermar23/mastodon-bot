@@ -2,7 +2,7 @@ FROM python:3.10-alpine as base
 
 # install extra packages for openai python install
 RUN apk update && apk add --no-cache python3-dev \
-                          python3-setuptools \
+                          py3-setuptools \
                           gcc \
                           libc-dev \
                           libffi-dev

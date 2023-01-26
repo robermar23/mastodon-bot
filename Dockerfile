@@ -1,4 +1,4 @@
-FROM python:3.10-alpine as base
+FROM python:3.10-alpine as compiler-image
 
 # install extra packages for openai python install
 RUN apk update && apk add --no-cache \
@@ -21,18 +21,26 @@ RUN apk update && apk add --no-cache \
                           libxcb-dev \
                           libpng-dev \
                           libffi-dev
-WORKDIR /app
+#WORKDIR /app
+RUN python -m venv /opt/venv
 
-COPY requirements/requirements.txt ./
+# Make sure we use the virtualenv:
+ENV PATH="/opt/venv/bin:$PATH"
+
+COPY requirements/requirements.txt .
 
 RUN pip install --upgrade pip
 RUN python -m pip install --no-cache-dir -r requirements.txt
-
-FROM base
 
 COPY . .
 
 # runs setup.py
 RUN python -m pip install .
 
-CMD ["bash"]
+FROM python:3.10-alpine as builder-image
+COPY --from=compiler-image /opt/venv /opt/venv
+
+# Make sure we use the virtualenv:
+ENV PATH="/opt/venv/bin:$PATH"
+
+CMD ["mastodonbotcli"]

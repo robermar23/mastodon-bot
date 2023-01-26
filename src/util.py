@@ -3,6 +3,7 @@ import click
 import os
 import sys
 import requests
+import logging
 
 def stopwatch(message: str):
     """Context manager to print how long a block of code took."""
@@ -11,7 +12,7 @@ def stopwatch(message: str):
         yield
     finally:
         t1 = time.time()
-        click.echo("Total elapsed time for %s: %.3f" % (message, t1 - t0))
+        logging.debug("Total elapsed time for %s: %.3f" % (message, t1 - t0))
 
 
 # example usage
@@ -97,9 +98,8 @@ def error_info(e):
     return exc_type, fname, exc_tb.tb_lineno
 
 
-def download_image(debugging, url):
-    if debugging:
-        click.echo(f"downloading image: {url}")
+def download_image(url):
+    logging.debug(f"downloading image: {url}")
     response = requests.get(url)
     response.raise_for_status()
     return response.content

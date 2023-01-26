@@ -4,7 +4,8 @@ FROM python:3.10-alpine as base
 RUN apk update && apk add --no-cache python3-dev \
                           gcc \
                           libc-dev \
-                          libffi-dev
+                          libffi-dev \
+                          zlib
 WORKDIR /app
 
 COPY requirements/requirements.txt ./

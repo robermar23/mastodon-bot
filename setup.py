@@ -13,7 +13,8 @@ requirements = [
     "dropbox==11.36.0",
     "beautifulsoup4==4.11.1",
     "openai==0.26",
-    "pillow==9.4.0"
+    "pillow==9.4.0",
+    "plexapi==4.13.2"
 ]
 
 

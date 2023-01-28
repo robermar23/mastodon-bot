@@ -34,11 +34,17 @@ dropbox_folder=
 #follow external setup/openai for openai params
 openai_api_key=
 openai_default_completion=
+
+plex_host=
+plex_token=
 ```
 
 if dropbox params are passed as source, a random file will be selected and posted
 
 if openai params are passed, the status associated with the file will be a response from openai completion based off of your openai_default_completion text/question
+
+if plex params are passed as a source, your instance will be queried for recenty added items and a summary of the media item will be posted along with a poster image of that content
+
 
 #### listen
 
@@ -122,6 +128,18 @@ curl --location --request POST 'https://api.dropboxapi.com/oauth2/token' \
 
 - Go to your Account settings, API Keys and create a new secret key
   - You will need to refer to this as openai_api_key for commands to use open ai
+
+#### plex
+
+- Assumption is that you have an existing Plex Server whose content you want to share info on.
+
+- Follow instructions here to get your plex host and token: `https://support.plex.tv/articles/204059436-finding-an-authentication-token-x-plex-token/`
+
+- Your plex_host will usually be something like:
+
+```text
+http|https://<private-ip>:32400
+```
 
 ### Forward looking integrations
 

@@ -7,6 +7,10 @@ from io import BytesIO
 
 
 class OpenAiChat:
+    """
+    Interact with OpenAI's completion interface
+    """
+    
     def __init__(self, openai_api_key):
         self.model = "text-davinci-003"
         self.temperature = 0.9
@@ -49,6 +53,10 @@ class OpenAiChat:
 
 
 class OpenAiImage:
+    """
+    Interact with OpenAI's image endpoint
+    """
+    
     def __init__(self, openai_api_key):
         self.n = 1
         self.width = 1024

@@ -33,7 +33,7 @@ class PlexInstance:
                     result.append(item_to_add)
                     logging.debug(f"Added to result: {media_item.title}")
                 else:
-                    logging.debug("Not added: {media_item.title}")
+                    logging.debug(f"Not added: {media_item.title}, added {hours_age} hours ago")
 
         except Exception as e:
             logging.error(error_info(e))

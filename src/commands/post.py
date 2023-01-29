@@ -27,7 +27,6 @@ from src.util import error_info
 @click.argument("openai_default_completion", required=False, type=click.STRING)
 @click.argument("plex_host", required=False, type=click.STRING)
 @click.argument("plex_token", required=False, type=click.STRING)
-@click.argument("plex_libraries", required=False, type=click.STRING)
 def post(
     ctx,
     mastodon_host,
@@ -41,8 +40,7 @@ def post(
     openai_api_key,
     openai_default_completion,
     plex_host,
-    plex_token,
-    plex_libraries
+    plex_token
 ):
     """
     CLI Post to Mastodon
@@ -58,10 +56,11 @@ def post(
     logging.debug(dropbox_client_secret)
     logging.debug(dropbox_refresh_token)
     logging.debug(dropbox_folder)
+    logging.debug(openai_api_key)
+    logging.debug(openai_default_completion)
     logging.debug(plex_host)
     logging.debug(plex_token)
-    logging.debug(plex_libraries)
-
+    
     mastodon_api = Mastodon(
         client_id=mastodon_client_id,
         client_secret=mastodon_client_secret,

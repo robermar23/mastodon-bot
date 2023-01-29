@@ -40,7 +40,7 @@ RUN python -m pip install .
 FROM python:3.10-alpine as builder-image
 
 #needed by pillow just to use it
-RUN apk add --no-cache zlib libjpeg openjpeg libtiff 
+RUN apk add --no-cache zlib libjpeg openjpeg tiff 
 #RUN apk add --no-cache zlib libjpeg libwebpmux3 libopenjp2-7 liblcms2-2 libwebpdemux2 libjpeg-turbo8
 COPY --from=compiler-image /opt/venv /opt/venv
 

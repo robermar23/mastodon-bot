@@ -38,6 +38,10 @@ COPY . .
 RUN python -m pip install .
 
 FROM python:3.10-alpine as builder-image
+
+#needed by pillow just to use it
+RUN apk add --no-cache zlib libjpeg
+
 COPY --from=compiler-image /opt/venv /opt/venv
 
 # Make sure we use the virtualenv:

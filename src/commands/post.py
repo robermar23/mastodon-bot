@@ -5,13 +5,14 @@ import click
 import random
 import mimetypes
 import logging
+import time
 
 from mastodon import Mastodon
 
 from src.external import dropbox
 from src.external import openai
 from src.external import plex
-from src.util import error_info
+from src.util import error_info, split_string
 
 @click.command("post", short_help="Post content to a mastodon instance")
 @click.pass_context
@@ -93,15 +94,20 @@ def handle_plex_post(plex_host, plex_token, result, mastodon_api):
                 mime_type=f"mime_type='image/png'",
             )
 
-        toot = mastodon_api.status_post(
-                added.get_description(),
-                media_ids=[media["id"]],
-                sensitive=False,
-                visibility="private",
-                spoiler_text=None,
-            )
-
-        result.append(toot["url"])
+        added_description = added.get_description()
+        logging.debug(added_description)
+        description_parts = split_string(added_description, 500)
+        for desc in description_parts:
+            logging.debug(desc)
+            toot = mastodon_api.status_post(
+                    desc,
+                    media_ids=[media["id"]],
+                    sensitive=False,
+                    visibility="private",
+                    spoiler_text=None,
+                )
+            result.append(toot["url"])
+            time.sleep(1)
 
 def handle_dropbox_post(dropbox_client_id, dropbox_client_secret, dropbox_refresh_token, dropbox_folder, openai_api_key, openai_default_completion, result, mastodon_api):
     logging.debug("Have dropbox token, processing for dropbox source...")

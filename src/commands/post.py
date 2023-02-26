@@ -28,6 +28,7 @@ from src.util import error_info, split_string
 @click.argument("openai_default_completion", required=False, type=click.STRING)
 @click.argument("plex_host", required=False, type=click.STRING)
 @click.argument("plex_token", required=False, type=click.STRING)
+@click.argument("plex_server_id", required=False, type=click.STRING)
 def post(
     ctx,
     mastodon_host,
@@ -41,7 +42,8 @@ def post(
     openai_api_key,
     openai_default_completion,
     plex_host,
-    plex_token
+    plex_token,
+    plex_server_id
 ):
     """
     CLI Post to Mastodon
@@ -61,12 +63,13 @@ def post(
     logging.debug(openai_default_completion)
     logging.debug(plex_host)
     logging.debug(plex_token)
+    logging.debug(plex_server_id)
     
     mastodon_api = Mastodon(
         client_id=mastodon_client_id,
         client_secret=mastodon_client_secret,
         access_token=mastodon_access_token,
-        api_base_url=mastodon_host,
+        api_base_url=mastodon_host
     )
 
     if (
@@ -78,14 +81,14 @@ def post(
         handle_dropbox_post(dropbox_client_id, dropbox_client_secret, dropbox_refresh_token, dropbox_folder, openai_api_key, openai_default_completion, result, mastodon_api)
 
     if (plex_host and plex_token):
-        handle_plex_post(plex_host, plex_token, result, mastodon_api)
+        handle_plex_post(plex_host, plex_token, plex_server_id, result, mastodon_api)
 
     return result
 
-def handle_plex_post(plex_host, plex_token, result, mastodon_api):
-    logging.debug("Have plex token, processing for plex source...")
+def handle_plex_post(plex_host, plex_token, plex_server_id, result, mastodon_api):
+    logging.debug(f"Have plex token, processing for plex source: {plex_host}")
         
-    plex_instance = plex.PlexInstance(plex_host=plex_host, plex_token=plex_token)
+    plex_instance = plex.PlexInstance(plex_host=plex_host, plex_token=plex_token, plex_server_id=plex_server_id)
     recently_added = plex_instance.get_recently_added(hours_since=24)
     for added in recently_added:
         media = mastodon_api.media_post(
@@ -104,7 +107,7 @@ def handle_plex_post(plex_host, plex_token, result, mastodon_api):
                     media_ids=[media["id"]],
                     sensitive=False,
                     visibility="private",
-                    spoiler_text=None,
+                    spoiler_text=None
                 )
             result.append(toot["url"])
             time.sleep(1)

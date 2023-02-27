@@ -19,19 +19,48 @@ class OpenAiChat:
         self.frequency_penalty = 0.0
         self.presence_penalty = 0.0
         self.api_key = openai_api_key
+        self.context = ""
         openai.api_key = self.api_key
 
-    def create(self, prompt):
+    def create(self, prompt, keep_context=True):
+        """
+        Prompt chat for a response, maintaining context of conversation by default
+        """
+
         result = None
 
         logging.debug(f"creating chat with prompt {prompt}")
 
         try:
+            
+            tmp_context = self.context
+            estimate_tokens_context = self.estimate_tokens(tmp_context)
+            if estimate_tokens_context >= self.max_tokens * 0.95:
+                logging.debug(f"context size exceeded! context\n'''{tmp_context}'''")
+                logging.debug(estimate_tokens_context)
+
+                self.context = self.reduce_context(tmp_context)
+                logging.debug(f"Reduced context to: {self.context}")
+
+            estimate_tokens_prompt = self.estimate_tokens(prompt)
+            if estimate_tokens_prompt >= self.max_tokens * 0.95:
+                logging.debug(f"prompt size exceeded! prompt\n'''{prompt}'''")
+                logging.debug(estimate_tokens_prompt)
+
+                prompt = self.reduce_context(prompt)
+                logging.debug(f"Reduced prompt to: {prompt}")
+                
+            #for maintaining context/history of chat
+            if keep_context:
+                self.context = f"context: {self.context} prompt: {prompt}"
+            else:
+                self.context = prompt
+
             # for understanding what each attr means
             # https://beta.openai.com/docs/api-reference/completions/create
             response = openai.Completion.create(
                 model=self.model,
-                prompt=prompt,
+                prompt=self.context,
                 temperature=self.temperature,
                 max_tokens=self.max_tokens,
                 top_p=self.top_p,
@@ -41,6 +70,7 @@ class OpenAiChat:
 
             if "choices" in response and len(response["choices"]) > 0:
                 result = response["choices"][0].text
+                
             else:
                 logging.debug(f"response unexpected: {response}")
 
@@ -67,6 +97,10 @@ class OpenAiImage:
         openai.api_key = self.api_key
 
     def create(self, prompt):
+        """
+        Prompt chat for an image
+        """
+         
         result = None
 
         logging.debug(f"creating image with prompt {prompt}")
@@ -95,6 +129,10 @@ class OpenAiImage:
             return "beep bop. bot beep. Dave? Dave what is going on?"
 
     def variation(self, image):
+        """
+        Prompt chat for an image variation of an existing image
+        """
+
         result = None
 
         logging.debug("creating variation of image")
@@ -133,4 +171,17 @@ class OpenAiImage:
                     f"open api error, http_status: {e.http_status}, error: {e.error}"
                 )
                 return "beep bop. bot beep. Dave? Dave what is going on?"
-
+            
+    def estimate_tokens(text):
+        """
+        As per https://openai.com/api/pricing/, prices are per 1,000 tokens. 
+        You can think of tokens as pieces of words, where 1,000 tokens is about 750 words. 
+        This paragraph is 35 tokens.
+        :param text:
+        :return:
+        """
+        return len(text.split()) / 0.75
+    
+    def reduce_context(context, limit=3000):
+        new_size = int(limit / 0.75)
+        return " ".join(context.split()[-new_size:]).split('.', 1)[-1]

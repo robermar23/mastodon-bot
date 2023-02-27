@@ -18,15 +18,18 @@ class ListenerResponseType(enum.Enum):
     OPEN_AI_CHAT = 2
     OPEN_AI_IMAGE = 3
 
+
 class Listener(mastodon.StreamListener):
     def __init__(self, mastodon_api, openai_api_key, response_type):
         self.mastodon_api = mastodon_api
         self.openai_api_key = openai_api_key
         self.response_type = response_type
+        self.chat_context = None
+
         logging.info(f"{self.response_type}, Listening...")
 
     def on_update(self, status):
-        
+
         logging.debug(f"on_update: {status}")
 
         convo_id = None
@@ -39,7 +42,7 @@ class Listener(mastodon.StreamListener):
             convo_id = status["id"]
 
         if "content" in status:
-            
+
             logging.debug(f"pre BeautifulSoup content: {status['content']}")
 
             inner_content = BeautifulSoup(status["content"], "html.parser").text
@@ -56,7 +59,7 @@ class Listener(mastodon.StreamListener):
                 logging.debug("i'm a bot, so not responding")
 
     def on_notification(self, notification):
-        
+
         logging.debug(f"on_notification: {notification}")
 
         convo_id = None
@@ -77,7 +80,10 @@ class Listener(mastodon.StreamListener):
                 notification["status"]["content"], "html.parser"
             ).text
 
-            if "media_attachments" in notification["status"] and len(notification["status"]["media_attachments"]) > 0:
+            if (
+                "media_attachments" in notification["status"]
+                and len(notification["status"]["media_attachments"]) > 0
+            ):
                 image_url = notification["status"]["media_attachments"][0].url
                 logging.debug(f"image_url: {image_url}")
 
@@ -89,7 +95,7 @@ class Listener(mastodon.StreamListener):
                 logging.debug("i'm a bot, so not responding")
 
     def on_conversation(self, conversation):
-        
+
         logging.debug(f"on_conversation: {conversation}")
 
         convo_id = None
@@ -110,7 +116,10 @@ class Listener(mastodon.StreamListener):
                 conversation["status"]["content"], "html.parser"
             ).text
 
-            if "media_attachments" in conversation["status"] and len(conversation["status"]["media_attachments"]) > 0:
+            if (
+                "media_attachments" in conversation["status"]
+                and len(conversation["status"]["media_attachments"]) > 0
+            ):
                 image_url = conversation["status"]["media_attachments"][0].url
                 logging.debug(f"image_url: {image_url}")
 
@@ -129,21 +138,25 @@ class Listener(mastodon.StreamListener):
 
         for word in words_to_filter:
             filtered_content = remove_word(string=filtered_content, word=word)
-        
+
         logging.debug(f"responding with {self.response_type}")
 
         if self.response_type == ListenerResponseType.REVERSE_STRING:
             response_content = filtered_content[::-1]
 
         if self.response_type == ListenerResponseType.OPEN_AI_CHAT:
-            chat = openai.OpenAiChat(self.openai_api_key)
-            chat_response = chat.create(filtered_content)
+            if self.chat_context == None:
+                self.chat_context = openai.OpenAiChat(self.openai_api_key)
+            chat_response = self.chat_context.create(filtered_content)
+
             if not chat_response:
                 chat_response = "beep bop, bop beep"
             response_content = chat_response
 
         if self.response_type == ListenerResponseType.OPEN_AI_IMAGE:
-            response_content = self.get_image_response_content(image_url, filtered_content, media_ids)
+            response_content = self.get_image_response_content(
+                image_url, filtered_content, media_ids
+            )
 
         logging.debug(f"status_post: {response_content}")
 
@@ -163,7 +176,7 @@ class Listener(mastodon.StreamListener):
         logging.debug("\n")
 
     def get_image_response_content(self, image_url, filtered_content, media_ids):
-        
+
         image_ai = openai.OpenAiImage(self.openai_api_key)
 
         if image_url:
@@ -182,10 +195,10 @@ class Listener(mastodon.StreamListener):
         logging.debug(f"posting media to mastoton with name {image_name}")
 
         ai_media_post = self.mastodon_api.media_post(
-                media_file=image_result,
-                file_name=image_name,
-                mime_type="mime_type='image/png'",
-            )
+            media_file=image_result,
+            file_name=image_name,
+            mime_type="mime_type='image/png'",
+        )
         media_ids.append(ai_media_post["id"])
         response_content = f"Image Generated from: {filtered_content}"
         return response_content

@@ -19,10 +19,24 @@ class OpenAiChat:
         self.frequency_penalty = 0.0
         self.presence_penalty = 0.0
         self.api_key = openai_api_key
-        self.context = ""
+        self.context = {}
         openai.api_key = self.api_key
 
-    def create(self, prompt, keep_context=True):
+    def estimate_tokens(self, text):
+        """
+        As per https://openai.com/api/pricing/, prices are per 1,000 tokens. 
+        You can think of tokens as pieces of words, where 1,000 tokens is about 750 words. 
+        This paragraph is 35 tokens.
+        :param text:
+        :return:
+        """
+        return len(text.split()) / 0.75
+    
+    def reduce_context(self, context, limit=3000):
+        new_size = int(limit / 0.75)
+        return " ".join(context.split()[-new_size:]).split('.', 1)[-1]
+    
+    def create(self, prompt: str, convo_id: str, keep_context=True):
         """
         Prompt chat for a response, maintaining context of conversation by default
         """
@@ -32,14 +46,16 @@ class OpenAiChat:
         logging.debug(f"creating chat with prompt {prompt}")
 
         try:
-            
-            tmp_context = self.context
-            estimate_tokens_context = self.estimate_tokens(tmp_context)
+            tmp_context: str = ""
+            if convo_id in self.context:
+                tmp_context = self.context[convo_id]
+
+            estimate_tokens_context = self.estimate_tokens(text=tmp_context)
             if estimate_tokens_context >= self.max_tokens * 0.95:
                 logging.debug(f"context size exceeded! context\n'''{tmp_context}'''")
                 logging.debug(estimate_tokens_context)
 
-                self.context = self.reduce_context(tmp_context)
+                self.context[convo_id] = self.reduce_context(tmp_context)
                 logging.debug(f"Reduced context to: {self.context}")
 
             estimate_tokens_prompt = self.estimate_tokens(prompt)
@@ -52,15 +68,18 @@ class OpenAiChat:
                 
             #for maintaining context/history of chat
             if keep_context:
-                self.context = f"context: {self.context} prompt: {prompt}"
+                if tmp_context.startswith("context:"):
+                    self.context[convo_id] = f"{tmp_context} prompt: {prompt}"    
+                else:
+                    self.context[convo_id] = f"context: {tmp_context} prompt: {prompt}"
             else:
-                self.context = prompt
+                self.context = {}
 
             # for understanding what each attr means
             # https://beta.openai.com/docs/api-reference/completions/create
             response = openai.Completion.create(
                 model=self.model,
-                prompt=self.context,
+                prompt=self.context[convo_id],
                 temperature=self.temperature,
                 max_tokens=self.max_tokens,
                 top_p=self.top_p,
@@ -172,16 +191,4 @@ class OpenAiImage:
                 )
                 return "beep bop. bot beep. Dave? Dave what is going on?"
             
-    def estimate_tokens(text):
-        """
-        As per https://openai.com/api/pricing/, prices are per 1,000 tokens. 
-        You can think of tokens as pieces of words, where 1,000 tokens is about 750 words. 
-        This paragraph is 35 tokens.
-        :param text:
-        :return:
-        """
-        return len(text.split()) / 0.75
     
-    def reduce_context(context, limit=3000):
-        new_size = int(limit / 0.75)
-        return " ".join(context.split()[-new_size:]).split('.', 1)[-1]

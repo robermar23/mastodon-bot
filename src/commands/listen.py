@@ -32,14 +32,15 @@ class Listener(mastodon.StreamListener):
 
         logging.debug(f"on_update: {status}")
 
-        convo_id = None
+        status_id = None
+        in_reply_to_id = None
         image_url = None
 
         if "in_reply_to_id" in status and status["in_reply_to_id"] != "":
-            convo_id = status["in_reply_to_id"]
+            in_reply_to_id = status["in_reply_to_id"]
 
-        if convo_id == None and "id" in status:
-            convo_id = status["id"]
+        if "id" in status:
+            status_id = status["id"]
 
         if "content" in status:
 
@@ -51,10 +52,17 @@ class Listener(mastodon.StreamListener):
                 image_url = status["media_attachments"][0].url
                 logging.debug(f"image_url: {image_url}")
 
-            logging.info(f"on_update: { convo_id} \n content: {inner_content}")
+            logging.info(
+                f"on_update: { status_id}, in_reply_to_id: {in_reply_to_id} \n content: {inner_content}"
+            )
 
             if not status["account"]["bot"]:
-                self.respond(inner_content, convo_id, image_url)
+                self.respond(
+                    content=inner_content,
+                    in_reply_to_id=in_reply_to_id,
+                    image_url=image_url,
+                    status_id=status_id,
+                )
             else:
                 logging.debug("i'm a bot, so not responding")
 
@@ -62,14 +70,19 @@ class Listener(mastodon.StreamListener):
 
         logging.debug(f"on_notification: {notification}")
 
-        convo_id = None
+        status_id = None
+        in_reply_to_id = None
         image_url = None
 
-        if "in_reply_to_id" in notification:
-            convo_id = notification["status"]["in_reply_to_id"]
+        if (
+            "status" in notification
+            and "in_reply_to_id" in notification["status"]
+            and notification["status"]["in_reply_to_id"] != ""
+        ):
+            in_reply_to_id = notification["status"]["in_reply_to_id"]
 
-        if convo_id == None and "status" in notification:
-            convo_id = notification["status"]["id"]
+        if "status" in notification:
+            status_id = notification["status"]["id"]
 
         if "status" in notification:
             logging.debug(
@@ -87,10 +100,17 @@ class Listener(mastodon.StreamListener):
                 image_url = notification["status"]["media_attachments"][0].url
                 logging.debug(f"image_url: {image_url}")
 
-            logging.info(f"on_notification: { convo_id} \n content: {inner_content}")
+            logging.info(
+                f"on_notification: { status_id}, in_reply_to_id: {in_reply_to_id} \n content: {inner_content}"
+            )
 
             if not notification["account"]["bot"]:
-                self.respond(inner_content, convo_id, image_url)
+                self.respond(
+                    content=inner_content,
+                    in_reply_to_id=in_reply_to_id,
+                    image_url=image_url,
+                    status_id=status_id,
+                )
             else:
                 logging.debug("i'm a bot, so not responding")
 
@@ -98,15 +118,15 @@ class Listener(mastodon.StreamListener):
 
         logging.debug(f"on_conversation: {conversation}")
 
-        convo_id = None
+        status_id = None
+        in_reply_to_id = None
         image_url = None
 
         if "status" in conversation:
             if "in_reply_to_id" in conversation["status"]:
-                convo_id = conversation["status"]["in_reply_to_id"]
+                in_reply_to_id = conversation["status"]["in_reply_to_id"]
 
-            if convo_id == None:
-                convo_id = conversation["status"]["id"]
+            status_id = conversation["status"]["id"]
 
             logging.debug(
                 f"pre BeautifulSoup content: {conversation['status']['content']}"
@@ -123,18 +143,44 @@ class Listener(mastodon.StreamListener):
                 image_url = conversation["status"]["media_attachments"][0].url
                 logging.debug(f"image_url: {image_url}")
 
-            logging.info(f"on_conversation: { convo_id} \n content: {inner_content}")
+            logging.info(
+                f"on_conversation: { status_id}, in_reply_to_id: {in_reply_to_id} \n content: {inner_content}"
+            )
 
             if not conversation["account"]["bot"]:
-                self.respond(inner_content, convo_id, image_url)
+                self.respond(
+                    content=inner_content,
+                    in_reply_to_id=in_reply_to_id,
+                    image_url=image_url,
+                    status_id=status_id,
+                )
             else:
                 logging.debug("i'm a bot, so not responding")
 
-    def respond(self, content, convo_id, image_url):
+    def respond(
+        self,
+        content: str,
+        in_reply_to_id: str,
+        image_url: str,
+        status_id: str
+    ):
         words_to_filter = filter_words(content, "@")
         filtered_content = content
         response_content = None
         media_ids = []
+        
+        is_new: bool = False
+        if status_id != None and in_reply_to_id == None:
+            is_new = True
+
+        if not is_new:
+            first_status = False
+            last_status_id = in_reply_to_id
+            while not first_status:
+                status_context = self.mastodon_api.status_context(last_status_id)
+                ancestors = status_context["ancestors"]
+                if len(ancestors) > 0:
+                    last_status_id = ancestors[0]["id"]
 
         for word in words_to_filter:
             filtered_content = remove_word(string=filtered_content, word=word)
@@ -147,7 +193,9 @@ class Listener(mastodon.StreamListener):
         if self.response_type == ListenerResponseType.OPEN_AI_CHAT:
             if self.chat_context == None:
                 self.chat_context = openai.OpenAiChat(self.openai_api_key)
-            chat_response = self.chat_context.create(filtered_content)
+            chat_response = self.chat_context.create(
+                convo_id=str(status_id), prompt=filtered_content, keep_context=True
+            )
 
             if not chat_response:
                 chat_response = "beep bop, bop beep"
@@ -167,7 +215,7 @@ class Listener(mastodon.StreamListener):
                 sensitive=False,
                 visibility="private",
                 spoiler_text=None,
-                in_reply_to_id=convo_id,
+                in_reply_to_id=in_reply_to_id,
                 media_ids=media_ids,
             )
             logging.debug(toot["url"])

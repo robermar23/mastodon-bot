@@ -169,19 +169,6 @@ class Listener(mastodon.StreamListener):
         response_content = None
         media_ids = []
         
-        is_new: bool = False
-        if status_id != None and in_reply_to_id == None:
-            is_new = True
-
-        if not is_new:
-            first_status = False
-            last_status_id = in_reply_to_id
-            while not first_status:
-                status_context = self.mastodon_api.status_context(last_status_id)
-                ancestors = status_context["ancestors"]
-                if len(ancestors) > 0:
-                    last_status_id = ancestors[0]["id"]
-
         for word in words_to_filter:
             filtered_content = remove_word(string=filtered_content, word=word)
 
@@ -191,6 +178,22 @@ class Listener(mastodon.StreamListener):
             response_content = filtered_content[::-1]
 
         if self.response_type == ListenerResponseType.OPEN_AI_CHAT:
+            is_new: bool = False
+            if status_id != None and in_reply_to_id == None:
+                is_new = True
+
+            if not is_new:
+                first_status = False
+                last_status_id = in_reply_to_id
+                while not first_status:
+                    last_status = self.mastodon_api.status(last_status_id)
+                    last_status_in_reply_to_id = last_status["in_reply_to_id"]
+                    if last_status_in_reply_to_id == None:
+                        first_status = True
+                    else:
+                        last_status_id = last_status_in_reply_to_id
+
+                status_id = last_status_id
             if self.chat_context == None:
                 self.chat_context = openai.OpenAiChat(self.openai_api_key)
             chat_response = self.chat_context.create(
@@ -208,6 +211,9 @@ class Listener(mastodon.StreamListener):
 
         logging.debug(f"status_post: {response_content}")
 
+        if in_reply_to_id == None:
+            in_reply_to_id = status_id
+
         split_response_content = split_string(response_content, 500)
         for split_content in split_response_content:
             toot = self.mastodon_api.status_post(
@@ -215,7 +221,7 @@ class Listener(mastodon.StreamListener):
                 sensitive=False,
                 visibility="private",
                 spoiler_text=None,
-                in_reply_to_id=in_reply_to_id,
+                in_reply_to_id= in_reply_to_id,
                 media_ids=media_ids,
             )
             logging.debug(toot["url"])

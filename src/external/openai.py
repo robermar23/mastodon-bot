@@ -4,6 +4,7 @@ import base64
 import logging
 from PIL import Image
 from io import BytesIO
+from src.timed_dict import timed_dict
 
 
 class OpenAiChat:
@@ -19,7 +20,7 @@ class OpenAiChat:
         self.frequency_penalty = 0.0
         self.presence_penalty = 0.0
         self.api_key = openai_api_key
-        self.context = {}
+        self.context = timed_dict()
         openai.api_key = self.api_key
 
     def estimate_tokens(self, text):
@@ -72,6 +73,7 @@ class OpenAiChat:
                     self.context[convo_id] = f"{tmp_context} prompt: {prompt}"    
                 else:
                     self.context[convo_id] = f"context: {tmp_context} prompt: {prompt}"
+                self.context.remove_old_items()
             else:
                 self.context = {}
 

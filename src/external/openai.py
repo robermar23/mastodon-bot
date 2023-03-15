@@ -12,15 +12,19 @@ class OpenAiChat:
     Interact with OpenAI's completion interface
     """
     
-    def __init__(self, openai_api_key):
-        self.model = "text-davinci-003"
-        self.temperature = 0.9
-        self.max_tokens = 2048
-        self.top_p = 1.0
-        self.frequency_penalty = 0.0
-        self.presence_penalty = 0.0
-        self.api_key = openai_api_key
-        self.context = timed_dict()
+    def __init__(self, **kwargs):
+        self.model = kwargs.get("model", "text-davinci-003")
+        self.temperature = kwargs.get("temperature", 0.9)
+        self.max_tokens = kwargs.get("max_tokens", 2048)
+        self.top_p = kwargs.get("top_p", 1.0)
+        self.frequency_penalty = kwargs.get("frequency_penalty", 0.0)
+        self.presence_penalty = kwargs.get("presence_penalty", 0.0)
+        self.api_key = kwargs.get("openai_api_key", None)
+        self.context = timed_dict(max_age_hours=kwargs.get("max_age_hours", 1))
+
+        if self.api_key is None:
+            raise ValueError("openai_api_key is required")
+        
         openai.api_key = self.api_key
 
     def estimate_tokens(self, text):
@@ -67,7 +71,7 @@ class OpenAiChat:
                 prompt = self.reduce_context(prompt)
                 logging.debug(f"Reduced prompt to: {prompt}")
                 
-            #for maintaining context/history of chat
+            #for maintaining context/history of chat, using passed convo_id as key
             if keep_context:
                 if tmp_context.startswith("context:"):
                     self.context[convo_id] = f"{tmp_context} prompt: {prompt}"    

@@ -25,6 +25,9 @@ class OpenAiChat:
         if self.api_key is None:
             raise ValueError("openai_api_key is required")
         
+        if self.context.max_age_hours is None:
+            raise ValueError("max_age_hours is required")
+        
         openai.api_key = self.api_key
 
     def estimate_tokens(self, text):

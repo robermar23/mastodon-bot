@@ -198,7 +198,7 @@ class Listener(mastodon.StreamListener):
                     top_p=self.chat_top_p,
                     frequency_penalty=self.chat_frequency_penalty,
                     presence_penalty=self.chat_presence_penalty,
-                    max_age_hours=self.chat_max_age_hours,
+                    max_age_hours=self.chat_max_age_hours_context,
                 )
 
             chat_response = self.chat_context.create(
@@ -349,7 +349,7 @@ def listen(
                 chat_top_p=openai_chat_top_p,
                 chat_frequency_penalty=openai_chat_frequency_penalty,
                 chat_presence_penalty=openai_chat_presence_penalty,
-                chat_max_age_hours=openai_chat_max_age_hours
+                chat_max_age_hours_context=openai_chat_max_age_hours
             )
         )
 

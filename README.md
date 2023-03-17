@@ -83,7 +83,7 @@ add debug output for each command for troubleshooting purposes
 ### Local Development
 
 ```shell
-python -m pip install -r /requirements/requirements_dev.txt
+python -m pip install -r requirements/requirements_dev.txt
 ```
 
 ### Local Setup

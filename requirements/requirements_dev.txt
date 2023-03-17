@@ -4,9 +4,10 @@ rich==13.0.0
 Mastodon.py==1.8.0
 dropbox==11.36.0
 beautifulsoup4==4.11.1
-openai==0.26
+openai==0.27.2
 pillow==9.4.0
 coverage==5.5
 pylint==2.7.2
 pytest==6.2.5
 plexapi==4.13.2
+tiktoken==-0.3.1

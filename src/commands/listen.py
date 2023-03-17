@@ -17,6 +17,7 @@ class ListenerResponseType(enum.Enum):
     REVERSE_STRING = 1
     OPEN_AI_CHAT = 2
     OPEN_AI_IMAGE = 3
+    OPEN_AI_PROMPT = 4
 
 
 class Listener(mastodon.StreamListener):
@@ -32,6 +33,7 @@ class Listener(mastodon.StreamListener):
         self.chat_frequency_penalty = kwargs.get("chat_frequency_penalty", None)
         self.chat_presence_penalty = kwargs.get("chat_presence_penalty", None)
         self.chat_max_age_hours_context = kwargs.get("chat_max_age_hours_context", None)
+        self.chat_persona = kwargs.get("chat_persona", None)
         self.chat_context = None
 
         logging.info(f"{self.response_type}, Listening...")
@@ -181,7 +183,7 @@ class Listener(mastodon.StreamListener):
         if self.response_type == ListenerResponseType.REVERSE_STRING:
             response_content = filtered_content[::-1]
 
-        if self.response_type == ListenerResponseType.OPEN_AI_CHAT:
+        if self.response_type == ListenerResponseType.OPEN_AI_PROMPT:
             is_new: bool = False
             if status_id != None and in_reply_to_id == None:
                 is_new = True
@@ -190,7 +192,7 @@ class Listener(mastodon.StreamListener):
                 status_id = self.convo_first_status_id(in_reply_to_id)
 
             if self.chat_context == None:
-                self.chat_context = openai.OpenAiChat(
+                self.chat_context = openai.OpenAiPrompt(
                     openai_api_key=self.openai_api_key,
                     model=self.chat_model,
                     temperature=self.chat_temperature,
@@ -208,6 +210,27 @@ class Listener(mastodon.StreamListener):
             if not chat_response:
                 chat_response = "beep bop, bop beep"
             response_content = chat_response
+
+        if self.response_type == ListenerResponseType.OPEN_AI_CHAT:
+            is_new: bool = False
+            if status_id != None and in_reply_to_id == None:
+                is_new = True
+
+            if not is_new:
+                status_id = self.convo_first_status_id(in_reply_to_id)
+
+            if self.chat_context == None:
+                self.chat_context = openai.OpenAiChat(
+                    openai_api_key=self.openai_api_key,
+                    model=self.chat_model,
+                    temperature=self.chat_temperature,
+                    max_tokens=self.chat_max_tokens,
+                    max_age_hours=self.chat_max_age_hours_context,
+                    persona=self.chat_persona
+                )
+            response_content = self.chat_context.create(
+                convo_id=str(status_id), prompt=filtered_content
+            )
 
         if self.response_type == ListenerResponseType.OPEN_AI_IMAGE:
             response_content = self.get_image_response_content(
@@ -295,6 +318,7 @@ class Listener(mastodon.StreamListener):
 @click.argument("openai_chat_frequency_penalty", required=False, type=click.FLOAT)
 @click.argument("openai_chat_presence_penalty", required=False, type=click.FLOAT)
 @click.argument("openai_chat_max_age_hours", required=False, type=click.INT)
+@click.argument("openai_chat_persona", required=False, type=click.STRING)
 def listen(
     ctx,
     mastodon_host,
@@ -309,24 +333,26 @@ def listen(
     openai_chat_top_p,
     openai_chat_frequency_penalty,
     openai_chat_presence_penalty,
-    openai_chat_max_age_hours
+    openai_chat_max_age_hours,
+    openai_chat_persona
 ):
     """
     CLI Listen to Mastodon User in a blocking manner
     """
 
-    logging.debug(mastodon_host)
-    logging.debug(mastodon_client_id)
-    logging.debug(mastodon_client_secret)
-    logging.debug(mastodon_access_token)
-    logging.debug(response_type)
-    logging.debug(openai_chat_model)
-    logging.debug(openai_chat_temperature)
-    logging.debug(openai_chat_max_tokens)
-    logging.debug(openai_chat_top_p)
-    logging.debug(openai_chat_frequency_penalty)
-    logging.debug(openai_chat_presence_penalty)
-    logging.debug(openai_chat_max_age_hours)
+    logging.debug(f"mastodon_host: {mastodon_host}")
+    logging.debug(f"mastodon_client_id: {mastodon_client_id}")
+    logging.debug(f"mastodon_client_secret: {mastodon_client_secret}")
+    logging.debug(f"mastodon_access_token: {mastodon_access_token}")
+    logging.debug(f"response_type: {response_type}")
+    logging.debug(f"openai_chat_model: {openai_chat_model}")
+    logging.debug(f"openai_chat_temperature: {openai_chat_temperature}")
+    logging.debug(f"openai_chat_max_tokens: {openai_chat_max_tokens}")
+    logging.debug(f"openai_chat_max_tokens: {openai_chat_top_p}")
+    logging.debug(f"openai_chat_frequency_penalty: {openai_chat_frequency_penalty}")
+    logging.debug(f"openai_chat_presence_penalty: {openai_chat_presence_penalty}")
+    logging.debug(f"openai_chat_max_age_hours: {openai_chat_max_age_hours}")
+    logging.debug(f"openai_chat_persona: {openai_chat_persona}")
 
     mastodon_api = Mastodon(
         client_id=mastodon_client_id,
@@ -349,7 +375,8 @@ def listen(
                 chat_top_p=openai_chat_top_p,
                 chat_frequency_penalty=openai_chat_frequency_penalty,
                 chat_presence_penalty=openai_chat_presence_penalty,
-                chat_max_age_hours_context=openai_chat_max_age_hours
+                chat_max_age_hours_context=openai_chat_max_age_hours,
+                chat_persona=openai_chat_persona
             )
         )
 

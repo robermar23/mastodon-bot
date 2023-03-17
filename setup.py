@@ -12,15 +12,16 @@ requirements = [
     "Mastodon.py==1.8.0",
     "dropbox==11.36.0",
     "beautifulsoup4==4.11.1",
-    "openai==0.26",
+    "openai==0.27.2",
     "pillow==9.4.0",
-    "plexapi==4.13.2"
+    "plexapi==4.13.2",
+    "tiktoken==-0.3.1"
 ]
 
 
 setuptools.setup(
     name="mastodon-bot-cli",
-    version="0.0.1",
+    version="0.7.2",
     author="Robert Evans",
     description="various commands to interact with a mastodon instance",
     packages=setuptools.find_packages(exclude=["dist", "build", "*.egg-info", "tests"]),

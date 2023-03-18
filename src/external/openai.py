@@ -12,7 +12,7 @@ class OpenAiPrompt:
     """
     Interact with OpenAI's completion interface using prompts
     """
-    
+
     def __init__(self, **kwargs):
         self.model = kwargs.get("model", "text-davinci-003")
         self.temperature = kwargs.get("temperature", 0.9)
@@ -25,26 +25,26 @@ class OpenAiPrompt:
 
         if self.api_key is None:
             raise ValueError("openai_api_key is required")
-        
+
         if self.context.max_age_hours is None:
             raise ValueError("max_age_hours is required")
-        
+
         openai.api_key = self.api_key
 
     def estimate_tokens(self, text):
         """
-        As per https://openai.com/api/pricing/, prices are per 1,000 tokens. 
-        You can think of tokens as pieces of words, where 1,000 tokens is about 750 words. 
+        As per https://openai.com/api/pricing/, prices are per 1,000 tokens.
+        You can think of tokens as pieces of words, where 1,000 tokens is about 750 words.
         This paragraph is 35 tokens.
         :param text:
         :return:
         """
         return len(text.split()) / 0.75
-    
+
     def reduce_context(self, context, limit=3000):
         new_size = int(limit / 0.75)
-        return " ".join(context.split()[-new_size:]).split('.', 1)[-1]
-    
+        return " ".join(context.split()[-new_size:]).split(".", 1)[-1]
+
     def create(self, prompt: str, convo_id: str, keep_context=True):
         """
         Prompt chat for a response, maintaining context of conversation by default
@@ -74,11 +74,11 @@ class OpenAiPrompt:
 
                 prompt = self.reduce_context(prompt)
                 logging.debug(f"Reduced prompt to: {prompt}")
-                
-            #for maintaining context/history of chat, using passed convo_id as key
+
+            # for maintaining context/history of chat, using passed convo_id as key
             if keep_context:
                 if tmp_context.startswith("context:"):
-                    self.context[convo_id] = f"{tmp_context} prompt: {prompt}"    
+                    self.context[convo_id] = f"{tmp_context} prompt: {prompt}"
                 else:
                     self.context[convo_id] = f"context: {tmp_context} prompt: {prompt}"
                 self.context.remove_old_items()
@@ -87,8 +87,6 @@ class OpenAiPrompt:
 
             # for understanding what each attr means
             # https://beta.openai.com/docs/api-reference/completions/create
-            
-            
 
             response = openai.Completion.create(
                 model=self.model,
@@ -102,7 +100,7 @@ class OpenAiPrompt:
 
             if "choices" in response and len(response["choices"]) > 0:
                 result = response["choices"][0].text
-                
+
             else:
                 logging.debug(f"response unexpected: {response}")
 
@@ -113,11 +111,12 @@ class OpenAiPrompt:
             )
             return "beep bop. bot beep. Dave? Dave what is going on?"
 
+
 class OpenAiChat:
     """
     Interact with OpenAI's chat completion interface
     """
-    
+
     def __init__(self, **kwargs):
         self.model = kwargs.get("model", "gpt-3.5-turbo-0301")
         self.temperature = kwargs.get("temperature", 0)
@@ -131,19 +130,21 @@ class OpenAiChat:
 
         if self.api_key is None:
             raise ValueError("openai_api_key is required")
-        
+
         if self.context.max_age_hours is None:
             raise ValueError("max_age_hours is required")
-        
+
         openai.api_key = self.api_key
 
     def num_tokens_from_messages(self, messages):
-        #Returns the number of tokens used by a list of messages.
+        # Returns the number of tokens used by a list of messages.
         try:
             encoding = tiktoken.encoding_for_model(self.model)
         except KeyError:
             encoding = tiktoken.get_encoding("cl100k_base")
-        if self.model == "gpt-3.5-turbo-0301":  # note: future models may deviate from this
+        if (
+            self.model == "gpt-3.5-turbo-0301"
+        ):  # note: future models may deviate from this
             num_tokens = 0
             for message in messages:
                 num_tokens += 4  # every message follows <im_start>{role/name}\n{content}<im_end>\n
@@ -154,9 +155,11 @@ class OpenAiChat:
             num_tokens += 2  # every reply is primed with <im_start>assistant
             return num_tokens
         else:
-            raise NotImplementedError(f"""num_tokens_from_messages() is not presently implemented for model {self.model}.
-                    See https://github.com/openai/openai-python/blob/main/chatml.md for information on how messages are converted to tokens.""")
-    
+            raise NotImplementedError(
+                f"""num_tokens_from_messages() is not presently implemented for model {self.model}.
+                    See https://github.com/openai/openai-python/blob/main/chatml.md for information on how messages are converted to tokens."""
+            )
+
     def reduce_messages(self, messages: list, max_tokens=4096):
         cur_tokens = self.num_tokens_from_messages(messages)
         mod_tokens = cur_tokens
@@ -194,9 +197,11 @@ class OpenAiChat:
 
             cur_tokens, mod_tokens = self.reduce_messages(messages=tmp_messages)
             if cur_tokens > mod_tokens:
-                logging.debug(f"max tokens exceeded! reduced by\n'''{cur_tokens - mod_tokens}'''")
-                    
-            #for maintaining context/history of chat, using passed convo_id as key
+                logging.debug(
+                    f"max tokens exceeded! reduced by\n'''{cur_tokens - mod_tokens}'''"
+                )
+
+            # for maintaining context/history of chat, using passed convo_id as key
             msg_len = len(tmp_messages)
             if msg_len < 3:
                 tmp_messages = self.init_messages(prompt=prompt)
@@ -208,9 +213,7 @@ class OpenAiChat:
                 tmp_messages = self.append_prompt(messages=tmp_messages, prompt=prompt)
 
             response = openai.ChatCompletion.create(
-                model=self.model,
-                messages=tmp_messages,
-                temperature=self.temperature
+                model=self.model, messages=tmp_messages, temperature=self.temperature
             )
 
             if "choices" in response and len(response["choices"]) > 0:
@@ -224,41 +227,38 @@ class OpenAiChat:
             else:
                 logging.debug(f"response unexpected: {response}")
 
-            self.context[convo_id] = self.append_response(messages=tmp_messages, response=result)
+            self.context[convo_id] = self.append_response(
+                messages=tmp_messages, response=result
+            )
 
             return result
-        
+
         except openai.error.OpenAIError as e:
             logging.error(
                 f"open api error, http_status: {e.http_status}, error: {e.error}"
             )
             return "beep bop. bot beep. Dave? Dave what is going on?"
-    
+
     def init_messages(self, prompt):
         result = []
-        result.append(
-            {"role": "system", "content": self.persona},
-            {"role": "user", "content": prompt},
-        )
+        result.append({"role": "system", "content": self.persona})
+        result.append({"role": "user", "content": prompt})
         return result
-    
+
     def append_prompt(self, messages: list, prompt: str):
-        messages.append(
-            {"role": "user", "content": prompt}
-        )
+        messages.append({"role": "user", "content": prompt})
         return messages
 
     def append_response(self, messages: list, response: str):
-        messages.append(
-            {"role": "assistant", "content": response}
-        )
+        messages.append({"role": "assistant", "content": response})
         return messages
+
 
 class OpenAiImage:
     """
     Interact with OpenAI's image endpoint
     """
-    
+
     def __init__(self, openai_api_key):
         self.n = 1
         self.width = 1024
@@ -272,11 +272,11 @@ class OpenAiImage:
         """
         Prompt chat for an image
         """
-         
+
         result = None
 
         logging.debug(f"creating image with prompt {prompt}")
-        
+
         try:
             # https://beta.openai.com/docs/api-reference/images/create
             response = openai.Image.create(
@@ -316,7 +316,9 @@ class OpenAiImage:
 
             # convert to png for submission, if necessary
             if img_convert.format != "PNG":
-                logging.debug(f"converting image to png as format is {img_convert.format}")
+                logging.debug(
+                    f"converting image to png as format is {img_convert.format}"
+                )
                 img_convert = img_convert.convert("RGB")
 
             img_buffer = BytesIO()
@@ -337,11 +339,9 @@ class OpenAiImage:
                     result = base64.b64decode(b64)
 
                 return result
-            
+
             except openai.error.OpenAIError as e:
                 logging.error(
                     f"open api error, http_status: {e.http_status}, error: {e.error}"
                 )
                 return "beep bop. bot beep. Dave? Dave what is going on?"
-            
-    

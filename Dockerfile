@@ -34,6 +34,9 @@ RUN python -m venv /opt/venv
 # Make sure we use the virtualenv:
 ENV PATH="/opt/venv/bin:$PATH"
 
+#https://github.com/rust-lang/cargo/issues/2808
+ENV CARGO_NET_GIT_FETCH_WITH_CLI=true
+
 COPY requirements/requirements.txt .
 
 RUN pip install --upgrade pip

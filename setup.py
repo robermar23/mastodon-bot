@@ -15,7 +15,7 @@ requirements = [
     "openai==0.27.2",
     "pillow==9.4.0",
     "plexapi==4.13.2",
-    "tiktoken==-0.3.1"
+    "tiktoken==0.3.1"
 ]
 
 

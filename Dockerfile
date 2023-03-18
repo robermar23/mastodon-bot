@@ -21,9 +21,13 @@ RUN apk update && apk add --no-cache \
   libxcb-dev \
   libpng-dev \
   libffi-dev \
-  curl
+  curl \
+  musl-dev \
+  openssl-dev \
+  cargo \
+  pkgconfig
 
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+#RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 
 RUN python -m venv /opt/venv
 
@@ -48,8 +52,8 @@ RUN apk add --no-cache zlib libjpeg openjpeg tiff libimagequant libxcb libpng li
 COPY --from=compiler-image /opt/venv /opt/venv
 
 # Make sure we use the virtualenv:
-ENV PATH="/opt/venv/bin:$HOME/.cargo/env:$PATH"
+ENV PATH="/opt/venv/bin:$PATH"
 
-RUN source $HOME/.cargo/env && echo $PATH
+#RUN source $HOME/.cargo/env && echo $PATH
 
 CMD ["mastodonbotcli"]

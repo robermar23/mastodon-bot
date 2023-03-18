@@ -25,7 +25,8 @@ RUN apk update && apk add --no-cache \
   musl-dev \
   openssl-dev \
   cargo \
-  pkgconfig
+  pkgconfig \
+  git
 
 #RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 

@@ -15,13 +15,14 @@ requirements = [
     "openai==0.27.2",
     "pillow==9.4.0",
     "plexapi==4.13.2",
+    "cryptography==3.3.2",
     "tiktoken==0.3.1"
 ]
 
 
 setuptools.setup(
     name="mastodon-bot-cli",
-    version="0.7.2",
+    version="0.7.7",
     author="Robert Evans",
     description="various commands to interact with a mastodon instance",
     packages=setuptools.find_packages(exclude=["dist", "build", "*.egg-info", "tests"]),

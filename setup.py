@@ -16,7 +16,7 @@ requirements = [
     "pillow==9.4.0",
     "plexapi==4.13.2",
     "cryptography==3.3.2",
-    "tiktoken==0.3.1"
+    "tiktoken==0.3.2"
 ]
 
 

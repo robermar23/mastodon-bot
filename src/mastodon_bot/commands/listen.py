@@ -348,7 +348,7 @@ def listen(
     logging.debug(f"openai_chat_model: {openai_chat_model}")
     logging.debug(f"openai_chat_temperature: {openai_chat_temperature}")
     logging.debug(f"openai_chat_max_tokens: {openai_chat_max_tokens}")
-    logging.debug(f"openai_chat_max_tokens: {openai_chat_top_p}")
+    logging.debug(f"openai_chat_top_p: {openai_chat_top_p}")
     logging.debug(f"openai_chat_frequency_penalty: {openai_chat_frequency_penalty}")
     logging.debug(f"openai_chat_presence_penalty: {openai_chat_presence_penalty}")
     logging.debug(f"openai_chat_max_age_hours: {openai_chat_max_age_hours}")

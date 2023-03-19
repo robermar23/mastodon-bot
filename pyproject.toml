@@ -39,12 +39,9 @@ pylint = "2.7.2"
 [tool.poetry.scripts]
 mastodonbotcli = "mastodon_bot.app:cli"
 
-
-
 [project.urls]
-homepage = "https://github.com/openai/tiktoken"
-repository = "https://github.com/openai/tiktoken"
-changelog = "https://github.com/openai/tiktoken/blob/main/CHANGELOG.md"
+homepage = "https://github.com/robermar23/mastodon-bot"
+repository = "https://github.com/robermar23/mastodon-bot"
 
 [build-system]
 build-backend = "poetry.core.masonry.api"

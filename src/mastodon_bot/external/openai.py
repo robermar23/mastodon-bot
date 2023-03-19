@@ -5,7 +5,7 @@ import logging
 import tiktoken
 from PIL import Image
 from io import BytesIO
-from src.timed_dict import timed_dict
+from mastodon_bot.timed_dict import timed_dict
 
 
 class OpenAiPrompt:

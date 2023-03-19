@@ -10,7 +10,7 @@ class UtilTestHandler(unittest.TestCase):
 
     def test_filter_words(self):
 
-        from src.util import filter_words
+        from mastodon_bot.util import filter_words
 
         test_string = "Hi, how are you doing today?"
         filtered_string = filter_words(string=test_string, starting_char="H")
@@ -21,7 +21,7 @@ class UtilTestHandler(unittest.TestCase):
         self.assertEqual(filtered_string, ["@test", "@test2"])
 
     def test_split_string(self):
-        from src.util import split_string
+        from mastodon_bot.util import split_string
 
         test_string = "111111111122222222223333333333"
         split = split_string(string=test_string, max_length=10)
@@ -32,7 +32,7 @@ class UtilTestHandler(unittest.TestCase):
         self.assertEqual(split, ["1111111111", " 222222222", "2 33333333", "33"])
 
     def test_remove_word(self):
-        from src.util import remove_word
+        from mastodon_bot.util import remove_word
 
         test_string = "I want to remove this word"
         removed = remove_word(string=test_string, word="this")
@@ -43,7 +43,7 @@ class UtilTestHandler(unittest.TestCase):
         self.assertEqual(removed, "I want to remove word as appears three times")
 
     def test_download_image(self):
-        from src.util import download_image
+        from mastodon_bot.util import download_image
         import requests
 
         mock_download_image = requests.Response()

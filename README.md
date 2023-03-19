@@ -12,7 +12,9 @@ simple test command to make sure app is installed and runs correctly
 
 #### post
 
-post content to your mastodon instance as a user/bot
+post content to your mastodon instance as a user/bot.
+
+Current only supports posting from Dropbox folders and Plex Libraries
 
 params:
 
@@ -33,6 +35,8 @@ dropbox_folder=
 
 #follow external setup/openai for openai params
 openai_api_key=
+
+#define a prompt for a phrase about the post from openai completions endpoint
 openai_default_completion=
 
 #follow external setup/plex for plex params
@@ -46,10 +50,15 @@ if openai params are passed, the status associated with the file will be a respo
 
 if plex params are passed as a source, your instance will be queried for recenty added items and a summary of the media item will be posted along with a poster image of that content.
 
-
 #### listen
 
 listen for events in your mastodon instance for a given account (must be a bot!) and respond based off of params passed.
+
+example:
+
+```shell
+mastodonbotcli listen $mastodon_host $mastodon_client_id $mastodon_client_secret $mastodon_access_token $openai_api_key $response_type
+```
 
 params:
 
@@ -63,8 +72,20 @@ mastodon_access_token=
 
 #follow external setup/openai for openai params
 openai_api_key=
+openai_chat_model=
+openai_chat_temperature=
+openai_chat_max_tokens=
+openai_chat_top_p=
+openai_chat_frequency_penalty=
+openai_chat_presence_penalty=
+openai_chat_max_age_hours=
+openai_chat_persona=
 
-#how you want the bot to respond to mentions.  OPEN_AI_CHAT or OPEN_AI_IMAGE
+#how you want the bot to respond to mentions.  
+ #OPENAI_PROMPT: Ask a question/prompt to your bot and openai completions endpoint will respond
+ #OPEN_AI_CHAT: Chat, have conversations with openai chat completions endpoint.
+ #OPEN_AI_IMAGE: Prompt for an image description for DALL-E image endpoints
+
 response_type=
 ```
 

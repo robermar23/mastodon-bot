@@ -30,10 +30,6 @@ RUN apk update && apk add --no-cache \
 
 WORKDIR /app
 
-#RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-
-
-
 # Make sure we use the virtualenv:
 #ENV PATH="/opt/venv/bin:$PATH"
 #https://github.com/rust-lang/cargo/issues/2808
@@ -43,19 +39,14 @@ ENV POETRY_VERSION=1.4.0
 RUN pip install --upgrade pip
 RUN pip install "poetry==$POETRY_VERSION"
 RUN python -m venv /venv
-#RUN python -m pip install --no-cache-dir -r requirements.txt
-
 
 COPY poetry.lock pyproject.toml ./
 
-# Project initialization:
 RUN poetry export -f requirements.txt | /venv/bin/pip install -r /dev/stdin
 
-#COPY requirements/requirements.txt .
 COPY . .
 RUN poetry build && /venv/bin/pip install dist/*.whl
-# runs setup.py
-#RUN python -m pip install .
+
 
 FROM python:3.10-alpine as builder-image
 

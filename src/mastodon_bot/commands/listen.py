@@ -8,8 +8,8 @@ import time
 import logging
 
 from mastodon import Mastodon
-from src.util import filter_words, remove_word, split_string, error_info, download_image
-from src.external import openai
+from mastodon_bot.util import filter_words, remove_word, split_string, error_info, download_image
+from mastodon_bot.external import openai
 from bs4 import BeautifulSoup
 
 

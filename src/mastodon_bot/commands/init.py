@@ -4,8 +4,8 @@ CLI initialization command.
 import click
 from rich.prompt import Prompt
 
-from src import console
-from src.constants import WELCOME_MESSAGE
+from mastodon_bot import console
+from mastodon_bot.constants import WELCOME_MESSAGE
 
 @click.command()
 def init():

@@ -9,10 +9,10 @@ import time
 
 from mastodon import Mastodon
 
-from src.external import dropbox
-from src.external import openai
-from src.external import plex
-from src.util import error_info, split_string
+from mastodon_bot.external import dropbox
+from mastodon_bot.external import openai
+from mastodon_bot.external import plex
+from mastodon_bot.util import error_info, split_string
 
 @click.command("post", short_help="Post content to a mastodon instance")
 @click.pass_context

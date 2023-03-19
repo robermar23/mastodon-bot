@@ -3,9 +3,8 @@ import urllib.parse
 
 from datetime import datetime, timedelta
 from plexapi.server import PlexServer
-
-from src.util import error_info
-from src.util import download_image
+from mastodon_bot.util import error_info
+from mastodon_bot.util import download_image
 
 
 class PlexInstance:

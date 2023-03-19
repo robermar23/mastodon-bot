@@ -5,7 +5,7 @@ import click
 import logging
 import atexit
 
-from src.commands import init, post, listen
+from mastodon_bot.commands import init, post, listen
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 

@@ -20,31 +20,45 @@ RUN apk update && apk add --no-cache \
   libimagequant-dev \
   libxcb-dev \
   libpng-dev \
-  libffi-dev
+  libffi-dev \
+  curl \
+  musl-dev \
+  openssl-dev \
+  cargo \
+  pkgconfig \
+  git
 
-RUN python -m venv /opt/venv
+WORKDIR /app
 
 # Make sure we use the virtualenv:
-ENV PATH="/opt/venv/bin:$PATH"
-
-COPY requirements/requirements.txt .
+#ENV PATH="/opt/venv/bin:$PATH"
+#https://github.com/rust-lang/cargo/issues/2808
+ENV CARGO_NET_GIT_FETCH_WITH_CLI=true
+ENV POETRY_VERSION=1.4.0
 
 RUN pip install --upgrade pip
-RUN python -m pip install --no-cache-dir -r requirements.txt
+RUN pip install "poetry==$POETRY_VERSION"
+RUN python -m venv /venv
+
+COPY poetry.lock pyproject.toml ./
+
+RUN poetry export -f requirements.txt | /venv/bin/pip install -r /dev/stdin
 
 COPY . .
+RUN poetry build && /venv/bin/pip install dist/*.whl
 
-# runs setup.py
-RUN python -m pip install .
 
 FROM python:3.10-alpine as builder-image
 
+WORKDIR /opt/mastodonbot
 #needed by pillow just to use it
 RUN apk add --no-cache zlib libjpeg openjpeg tiff libimagequant libxcb libpng libffi
 #RUN apk add --no-cache zlib libjpeg libwebpmux3 libopenjp2-7 liblcms2-2 libwebpdemux2 libjpeg-turbo8
-COPY --from=compiler-image /opt/venv /opt/venv
+COPY --from=compiler-image /venv /venv
 
 # Make sure we use the virtualenv:
-ENV PATH="/opt/venv/bin:$PATH"
+ENV PATH="/venv/bin:$PATH"
+
+#RUN source $HOME/.cargo/env && echo $PATH
 
 CMD ["mastodonbotcli"]

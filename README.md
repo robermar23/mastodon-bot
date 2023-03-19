@@ -8,11 +8,11 @@ commands to automate interaction with your mastodon instance
 
 #### init
 
-simple test command to make sure app is installed correctly
+simple test command to make sure app is installed and runs correctly
 
 #### post
 
-post content to your mastodon instance
+post content to your mastodon instance as a user/bot
 
 params:
 
@@ -49,7 +49,7 @@ if plex params are passed as a source, your instance will be queried for recenty
 
 #### listen
 
-listen for events in your mastodon instance for a given account (must be a bot!) and respond based off of params passed
+listen for events in your mastodon instance for a given account (must be a bot!) and respond based off of params passed.
 
 params:
 
@@ -83,13 +83,26 @@ add debug output for each command for troubleshooting purposes
 ### Local Development
 
 ```shell
-python -m pip install -r /requirements/requirements_dev.txt
+python -m pip install -r requirements/requirements_dev.txt
 ```
 
 ### Local Setup
 
+Poetry is used as the package manager: `https://github.com/python-poetry/poetry`
+
+If you do not have poetry installed:
+
 ```shell
-python -m pip install .
+POETRY_VERSION="1.4.0"
+RUN pip install "poetry==$POETRY_VERSION"
+```
+
+Then install with poetry, including all dependencies.  
+
+A virtual environment is automatically dreated
+
+```shell
+poetry install
 ```
 
 use mastodonbotcli as an executable:
@@ -102,7 +115,7 @@ mastodonbotcli -help
 
 Build image locally:
 
-```
+```shell
 docker build -t <your-tag> .
 ```
 

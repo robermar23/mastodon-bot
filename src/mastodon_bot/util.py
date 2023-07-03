@@ -3,6 +3,9 @@ import os
 import sys
 import requests
 import logging
+import base64
+from mastodon_bot.external import openai
+
 
 def stopwatch(message: str):
     """Context manager to print how long a block of code took."""
@@ -102,3 +105,53 @@ def download_image(url):
     response = requests.get(url)
     response.raise_for_status()
     return response.content
+
+
+def base64_encode_long_string(long_string):
+    long_string_bytes = long_string.encode('utf-8')
+    encoded_bytes = base64.b64encode(long_string_bytes)
+    encoded_string = encoded_bytes.decode('utf-8')
+    return encoded_string
+
+
+def convo_first_status_id(mastodon_api, in_reply_to_id):
+    first_status = False
+    last_status_id = in_reply_to_id
+    while not first_status:
+        last_status = mastodon_api.status(last_status_id)
+        last_status_in_reply_to_id = last_status["in_reply_to_id"]
+        if last_status_in_reply_to_id == None:
+            first_status = True
+        else:
+            last_status_id = last_status_in_reply_to_id
+
+    status_id = last_status_id
+    return status_id
+
+def get_image_response_content(mastodon_api, openai_api_key, image_url, filtered_content, media_ids):
+
+    image_ai = openai.OpenAiImage(openai_api_key)
+
+    if image_url:
+        image_byes = download_image(image_url)
+
+    if image_url and filtered_content == "variation":
+        image_result = image_ai.variation(image=image_byes)
+
+    elif image_url and filtered_content == "edit":
+        logging.debug("Not yet implemented")
+
+    else:
+        image_result = image_ai.create(filtered_content)
+
+    image_name = filtered_content.replace(" ", "_") + ".png"
+    logging.debug(f"posting media to mastoton with name {image_name}")
+
+    ai_media_post = mastodon_api.media_post(
+        media_file=image_result,
+        file_name=image_name,
+        mime_type="mime_type='image/png'",
+    )
+    media_ids.append(ai_media_post["id"])
+    response_content = f"Image Generated from: {filtered_content}"
+    return response_content

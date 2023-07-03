@@ -6,6 +6,8 @@ import tiktoken
 from PIL import Image
 from io import BytesIO
 from mastodon_bot.timed_dict import timed_dict
+from mastodon_bot.redis_timed_dict import redis_timed_dict
+from mastodon_bot.util import base64_encode_long_string
 
 
 class OpenAiPrompt:
@@ -61,7 +63,8 @@ class OpenAiPrompt:
 
             estimate_tokens_context = self.estimate_tokens(text=tmp_context)
             if estimate_tokens_context >= self.max_tokens * 0.95:
-                logging.debug(f"context size exceeded! context\n'''{tmp_context}'''")
+                logging.debug(
+                    f"context size exceeded! context\n'''{tmp_context}'''")
                 logging.debug(estimate_tokens_context)
 
                 self.context[convo_id] = self.reduce_context(tmp_context)
@@ -122,18 +125,26 @@ class OpenAiChat:
         self.temperature = kwargs.get("temperature", 0)
         self.max_tokens = kwargs.get("max_tokens", 4096)
         self.persona = kwargs.get("persona", "You are a helpful assistant")
+        self.persona_key = base64_encode_long_string(self.persona)
         # self.top_p = kwargs.get("top_p", 1.0)
         # self.frequency_penalty = kwargs.get("frequency_penalty", 0.0)
         # self.presence_penalty = kwargs.get("presence_penalty", 0.0)
         self.api_key = kwargs.get("openai_api_key", None)
-        self.context = timed_dict(max_age_hours=kwargs.get("max_age_hours", 1))
+        self.max_age_hours = kwargs.get("max_age_hours", 1)
+
+        self.redis_connection = kwargs.get("redis_connection", None)
+        if self.redis_connection:
+            self.context = redis_timed_dict(
+                redis_connection=self.redis_connection, key=self.persona_key, max_age_hours=self.max_age_hours)
+        else:
+            self.context = timed_dict(max_age_hours=self.max_age_hours)
 
         if self.api_key is None:
             raise ValueError("openai_api_key is required")
 
         if self.context.max_age_hours is None:
             raise ValueError("max_age_hours is required")
-        
+
         try:
             self.encoding = tiktoken.encoding_for_model(self.model)
         except KeyError:
@@ -141,14 +152,18 @@ class OpenAiChat:
 
         openai.api_key = self.api_key
 
-    def num_tokens_from_messages(self, messages):
+    def num_tokens_from_messages(self, messages: list):
         # Returns the number of tokens used by a list of messages.
         if (
             self.model == "gpt-3.5-turbo-0301"
         ):  # note: future models may deviate from this
             num_tokens = 0
             for message in messages:
-                num_tokens += 4  # every message follows <im_start>{role/name}\n{content}<im_end>\n
+                # every message follows <im_start>{role/name}\n{content}<im_end>\n
+                num_tokens += 4
+                # logging.debug(f"message: {message}")
+                # logging.debug(f"message type: {type(message)}")
+
                 for key, value in message.items():
                     num_tokens += len(self.encoding.encode(value))
                     if key == "name":  # if there's a name, the role is omitted
@@ -195,8 +210,12 @@ class OpenAiChat:
             tmp_messages = []
             if convo_id in self.context:
                 tmp_messages = self.context[convo_id]
+            
+            # logging.debug(f"cached messages: {tmp_messages}")
+            # logging.debug(f"messages type: {type(tmp_messages)}")
 
-            cur_tokens, mod_tokens = self.reduce_messages(messages=tmp_messages)
+            cur_tokens, mod_tokens = self.reduce_messages(
+                messages=tmp_messages)
             if cur_tokens > mod_tokens:
                 logging.debug(
                     f"max tokens exceeded! reduced by\n'''{cur_tokens - mod_tokens}'''"
@@ -211,7 +230,8 @@ class OpenAiChat:
             # elif msg_len == 2:
             #     tmp_messages = self.init_messages(prompt=prompt)
             else:
-                tmp_messages = self.append_prompt(messages=tmp_messages, prompt=prompt)
+                tmp_messages = self.append_prompt(
+                    messages=tmp_messages, prompt=prompt)
 
             response = openai.ChatCompletion.create(
                 model=self.model, messages=tmp_messages, temperature=self.temperature

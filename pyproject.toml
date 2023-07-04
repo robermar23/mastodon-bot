@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "mastodon-bot-cli"
-version = "0.8.1"
+version = "0.8.3"
 description = "mastodon-bot is a cli app that uses various commands to interact with a mastodon instance and openai endpoints"
 license = "LICENSE"
 authors = ["Robert Evans <robermar2@gmail.com>"]
@@ -29,11 +29,11 @@ redis = "4.6.0"
 rq = "1.15.1"
 
 [tool.poetry.group.test.dependencies]
-pytest = "6.0.0"
+pytest = "^6.0.0"
 pytest-mock = "*"
 
 [tool.poetry.group.dev.dependencies]
-pytest = "6.0.0"
+pytest = "^6.0.0"
 pytest-mock = "*"
 coverage = "5.5"
 pylint = "2.7.2"

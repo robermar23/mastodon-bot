@@ -22,6 +22,9 @@ class ListenerConfig():
         self.mastodon_access_token = kwargs.get("mastodon_access_token", None)
         self.mastodon_host = kwargs.get("mastodon_host", None)
         self.rq_redis_connection = kwargs.get("rq_redis_connection", None)
+        self.rq_queue_name = kwargs.get("rq_queue_name", None)
+        self.rq_queue_retry_attempts = kwargs.get("rq_queue_retry_attempts", 3)
+        self.rq_queue_retry_delay = kwargs.get("rq_queue_retry_delay", 60)
 
     def get_openai_api_key(self):
         return self.openai_api_key
@@ -112,5 +115,21 @@ class ListenerConfig():
     
     def set_rq_redis_connection(self, rq_redis_connection):
         self.rq_redis_connection = rq_redis_connection
-        
+
+    def set_rq_queue_name(self, rq_queue_name):
+        self.rq_queue_name = rq_queue_name
+
+    def get_rq_queue_name(self):
+        return self.rq_queue_name
     
+    def get_rq_queue_retry_attempts(self):
+        return self.rq_queue_retry_attempts
+    
+    def set_rq_queue_retry_attempts(self, rq_queue_retry_attempts):
+        self.rq_queue_retry_attempts = rq_queue_retry_attempts
+    
+    def get_rq_queue_retry_delay(self):
+        return self.rq_queue_retry_delay
+    
+    def set_rq_queue_retry_delay(self, rq_queue_retry_delay):
+        self.rq_queue_retry_delay = rq_queue_retry_delay

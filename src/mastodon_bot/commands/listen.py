@@ -13,11 +13,12 @@ from bs4 import BeautifulSoup
 from rq import Queue, Retry
 from redis import Redis
 
+
 class Listener(mastodon.StreamListener):
     def __init__(self, **kwargs):
         self.config = ListenerConfig(**kwargs)
         self.mastodon_api = kwargs.get("mastodon_api", None)
-        
+
         logging.info(f"{self.config.response_type}, Listening...")
 
     def on_update(self, status):
@@ -38,7 +39,8 @@ class Listener(mastodon.StreamListener):
 
             logging.debug(f"pre BeautifulSoup content: {status['content']}")
 
-            inner_content = BeautifulSoup(status["content"], "html.parser").text
+            inner_content = BeautifulSoup(
+                status["content"], "html.parser").text
 
             if "media_attachments" in status and len(status["media_attachments"]) > 0:
                 image_url = status["media_attachments"][0].url
@@ -49,7 +51,8 @@ class Listener(mastodon.StreamListener):
             )
 
             if not status["account"]["bot"]:
-                self.enqueue_response(status_id, in_reply_to_id, image_url, inner_content)
+                self.enqueue_response(
+                    status_id, in_reply_to_id, image_url, inner_content)
             else:
                 logging.debug("i'm a bot, so not responding")
 
@@ -92,7 +95,8 @@ class Listener(mastodon.StreamListener):
             )
 
             if not notification["account"]["bot"]:
-                self.enqueue_response(status_id, in_reply_to_id, image_url, inner_content)
+                self.enqueue_response(
+                    status_id, in_reply_to_id, image_url, inner_content)
             else:
                 logging.debug("i'm a bot, so not responding")
 
@@ -130,7 +134,8 @@ class Listener(mastodon.StreamListener):
             )
 
             if not conversation["account"]["bot"]:
-                self.enqueue_response(status_id, in_reply_to_id, image_url, inner_content)
+                self.enqueue_response(
+                    status_id, in_reply_to_id, image_url, inner_content)
             else:
                 logging.debug("i'm a bot, so not responding")
 
@@ -138,27 +143,28 @@ class Listener(mastodon.StreamListener):
         if self.config.rq_redis_connection:
             logging.info(f"enqueuing: {status_id} {in_reply_to_id}")
             redis_conn = Redis.from_url(self.config.rq_redis_connection)
-            queue = Queue('mastodon_bot', connection=redis_conn)
+            queue = Queue(self.config.rq_queue_name, connection=redis_conn)
             queue.enqueue(
-                        listener_respond,
-                        kwargs =
-                        {
-                            'content': inner_content,
-                            'in_reply_to_id': in_reply_to_id,
-                            'image_url': image_url,
-                            'status_id': status_id,
-                            'config': self.config
-                        },
-                        retry=Retry(max=3, interval=60)
-                    )
+                listener_respond,
+                kwargs={
+                    'content': inner_content,
+                    'in_reply_to_id': in_reply_to_id,
+                    'image_url': image_url,
+                    'status_id': status_id,
+                    'config': self.config
+                },
+                retry=Retry(max=self.config.rq_queue_retry_attempts,
+                            interval=self.config.rq_queue_retry_delay)
+            )
         else:
             listener_respond(
-                        content=inner_content,
-                        in_reply_to_id=in_reply_to_id,
-                        image_url=image_url,
-                        status_id=status_id,
-                        config=self.config
-                    )
+                content=inner_content,
+                in_reply_to_id=in_reply_to_id,
+                image_url=image_url,
+                status_id=status_id,
+                config=self.config
+            )
+
 
 @click.command(
     "listen",
@@ -180,6 +186,9 @@ class Listener(mastodon.StreamListener):
 @click.argument("openai_chat_max_age_hours", required=False, type=click.INT)
 @click.argument("openai_chat_persona", required=False, type=click.STRING)
 @click.argument("rq_redis_connection", required=False, type=click.STRING)
+@click.argument("rq_queue_name", required=False, type=click.STRING)
+@click.argument("rq_queue_retry_attempts", required=False, type=click.INT)
+@click.argument("rq_queue_retry_delay", required=False, type=click.INT)
 def listen(
     ctx,
     mastodon_host,
@@ -197,6 +206,9 @@ def listen(
     openai_chat_max_age_hours,
     openai_chat_persona,
     rq_redis_connection,
+    rq_queue_name,
+    rq_queue_retry_attempts,
+    rq_queue_retry_delay,
 ):
     """
     CLI Listen to Mastodon User in a blocking manner
@@ -211,11 +223,16 @@ def listen(
     logging.debug(f"openai_chat_temperature: {openai_chat_temperature}")
     logging.debug(f"openai_chat_max_tokens: {openai_chat_max_tokens}")
     logging.debug(f"openai_chat_top_p: {openai_chat_top_p}")
-    logging.debug(f"openai_chat_frequency_penalty: {openai_chat_frequency_penalty}")
-    logging.debug(f"openai_chat_presence_penalty: {openai_chat_presence_penalty}")
+    logging.debug(
+        f"openai_chat_frequency_penalty: {openai_chat_frequency_penalty}")
+    logging.debug(
+        f"openai_chat_presence_penalty: {openai_chat_presence_penalty}")
     logging.debug(f"openai_chat_max_age_hours: {openai_chat_max_age_hours}")
     logging.debug(f"openai_chat_persona: {openai_chat_persona}")
     logging.debug(f"rq_redis_connection: {rq_redis_connection}")
+    logging.debug(f"rq_queue_name: {rq_queue_name}")
+    logging.debug(f"rq_queue_retry_attempts: {rq_queue_retry_attempts}")
+    logging.debug(f"rq_queue_retry_delay: {rq_queue_retry_delay}")
 
     mastodon_api = Mastodon(
         client_id=mastodon_client_id,
@@ -241,6 +258,9 @@ def listen(
                 chat_max_age_hours_context=openai_chat_max_age_hours,
                 chat_persona=openai_chat_persona,
                 rq_redis_connection=rq_redis_connection,
+                rq_queue_name=rq_queue_name,
+                rq_queue_retry_attempts=rq_queue_retry_attempts,
+                rq_queue_retry_delay=rq_queue_retry_delay,
                 mastodon_client_id=mastodon_client_id,
                 mastodon_client_secret=mastodon_client_secret,
                 mastodon_access_token=mastodon_access_token,

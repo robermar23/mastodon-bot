@@ -4,8 +4,7 @@ import sys
 import requests
 import logging
 import base64
-from mastodon_bot.external import openai
-
+import textwrap
 
 def stopwatch(message: str):
     """Context manager to print how long a block of code took."""
@@ -67,6 +66,27 @@ def split_string(string, max_length):
     # return the list of split strings
     return split_strings
 
+def split_string_by_words(text: str, max_length: int = 0):
+    # Split the text into paragraphs and wrap each paragraph
+    paragraphs = text.split('\n')
+    wrapped_paragraphs = [textwrap.wrap(p, max_length) for p in paragraphs]
+
+    # Flatten the list of wrapped paragraphs
+    wrapped_text = [word for sublist in wrapped_paragraphs for word in sublist]
+
+    # Join the wrapped text into groups of 'width' characters
+    groups = []
+    current_group = ''
+    for word in wrapped_text:
+        if len(current_group) + len(word) <= max_length:
+            current_group += word
+        else:
+            groups.append(current_group)
+            current_group = word
+    if current_group:
+        groups.append(current_group)
+
+    return groups
 
 # example usage
 # my_string = "This is a string with a word that needs to be removed."
@@ -127,31 +147,3 @@ def convo_first_status_id(mastodon_api, in_reply_to_id):
 
     status_id = last_status_id
     return status_id
-
-def get_image_response_content(mastodon_api, openai_api_key, image_url, filtered_content, media_ids):
-
-    image_ai = openai.OpenAiImage(openai_api_key)
-
-    if image_url:
-        image_byes = download_image(image_url)
-
-    if image_url and filtered_content == "variation":
-        image_result = image_ai.variation(image=image_byes)
-
-    elif image_url and filtered_content == "edit":
-        logging.debug("Not yet implemented")
-
-    else:
-        image_result = image_ai.create(filtered_content)
-
-    image_name = filtered_content.replace(" ", "_") + ".png"
-    logging.debug(f"posting media to mastoton with name {image_name}")
-
-    ai_media_post = mastodon_api.media_post(
-        media_file=image_result,
-        file_name=image_name,
-        mime_type="mime_type='image/png'",
-    )
-    media_ids.append(ai_media_post["id"])
-    response_content = f"Image Generated from: {filtered_content}"
-    return response_content

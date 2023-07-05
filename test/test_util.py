@@ -56,6 +56,15 @@ class UtilTestHandler(unittest.TestCase):
             self.assertEqual(response, b'this will be image encoded')
             mock_get.assert_called_once_with('http://www.example.com/image.png')
 
+    def test_split_string_into_words(self):
+        from mastodon_bot.util import split_string_by_words
+
+        test_string = "I'm sorry, but as a friendly assistant who works for a financial investment newsletter marketing company, my role is to provide marketing solutions and ideas to improve customer engagement, not individual investment advice. It is important to perform thorough research and analysis before making any investment decisions. It's always a good idea to consult with a licensed financial advisor or broker who can provide you with personalized investment advice based on your individual financial situation, goals, and objectives."
+        split = split_string_by_words(text=test_string, max_length=500)
+        self.assertEqual(len(split), 2)
+        self.assertEqual(split[0], "I'm sorry, but as a friendly assistant who works for a financial investment newsletter marketing company, my role is to provide marketing solutions and ideas to improve customer engagement, not individual investment advice. It is important to perform thorough research and analysis before making any investment decisions. It's always a good idea to consult with a licensed financial advisor or broker who can provide you with personalized investment advice based on your individual financial")
+        self.assertEqual(split[1], "situation, goals, and objectives.")
+
 
 
 

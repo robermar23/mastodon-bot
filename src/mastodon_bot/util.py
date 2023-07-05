@@ -3,6 +3,8 @@ import os
 import sys
 import requests
 import logging
+import base64
+import textwrap
 
 def stopwatch(message: str):
     """Context manager to print how long a block of code took."""
@@ -64,6 +66,27 @@ def split_string(string, max_length):
     # return the list of split strings
     return split_strings
 
+def split_string_by_words(text: str, max_length: int = 0):
+    # Split the text into paragraphs and wrap each paragraph
+    paragraphs = text.split('\n')
+    wrapped_paragraphs = [textwrap.wrap(p, max_length) for p in paragraphs]
+
+    # Flatten the list of wrapped paragraphs
+    wrapped_text = [word for sublist in wrapped_paragraphs for word in sublist]
+
+    # Join the wrapped text into groups of 'width' characters
+    groups = []
+    current_group = ''
+    for word in wrapped_text:
+        if len(current_group) + len(word) <= max_length:
+            current_group += word
+        else:
+            groups.append(current_group)
+            current_group = word
+    if current_group:
+        groups.append(current_group)
+
+    return groups
 
 # example usage
 # my_string = "This is a string with a word that needs to be removed."
@@ -102,3 +125,25 @@ def download_image(url):
     response = requests.get(url)
     response.raise_for_status()
     return response.content
+
+
+def base64_encode_long_string(long_string):
+    long_string_bytes = long_string.encode('utf-8')
+    encoded_bytes = base64.b64encode(long_string_bytes)
+    encoded_string = encoded_bytes.decode('utf-8')
+    return encoded_string
+
+
+def convo_first_status_id(mastodon_api, in_reply_to_id):
+    first_status = False
+    last_status_id = in_reply_to_id
+    while not first_status:
+        last_status = mastodon_api.status(last_status_id)
+        last_status_in_reply_to_id = last_status["in_reply_to_id"]
+        if last_status_in_reply_to_id == None:
+            first_status = True
+        else:
+            last_status_id = last_status_in_reply_to_id
+
+    status_id = last_status_id
+    return status_id

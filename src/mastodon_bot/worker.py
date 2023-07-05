@@ -93,7 +93,11 @@ def listener_respond(
 
     if config.response_type == ListenerResponseType.OPEN_AI_IMAGE:
         response_content = get_image_response_content(
-            image_url, filtered_content, media_ids
+            mastodon_api=mastodon_api,
+            openai_api_key=config.openai_api_key,
+            image_url=image_url,
+            filtered_content=filtered_content,
+            media_ids=media_ids
         )
 
     logging.debug(f"status_post: {response_content}")

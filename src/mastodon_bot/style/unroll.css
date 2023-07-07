@@ -1,0 +1,33 @@
+body {
+  font-family: sans-serif;
+  font-size: 16px;
+  border-color: rgba(32, 33, 35, 0.5);
+  background-color: rgba(68, 70, 84);
+  color: white;
+}
+
+pre {
+  background-color: black;
+  color: white;
+  font-size: 0.875em;
+  font-weight: 400;
+  line-height: 1.71429;
+  overflow-x: auto;
+  border-radius: 0.375rem;
+  margin: 0px;
+  padding: 5px;
+}
+
+code {
+  overflow-wrap: normal;
+  color: rgb(255, 255, 255);
+  hyphens: none;
+  line-height: 1.5;
+  tab-size: 4;
+  text-align: left;
+  white-space-collapse: preserve;
+  text-wrap: nowrap;
+  word-break: normal;
+  word-spacing: normal;
+  background: none;
+}

@@ -98,8 +98,9 @@ def listener_respond(
             logging.debug(
                 "Detected code in chat response, posting link to code file")
 
+            stylesheet = f"https://{config.mastodon_s3_bucket_name}.s3.amazonaws.com/media_attachments/style/unroll.css"
             html_full = prepare_content_for_archive(
-                filtered_content, response_content)
+                filtered_content=filtered_content, response_content=response_content, stylesheet=stylesheet)
 
             s3 = s3Wrapper(access_key_id=config.mastodon_s3_access_key_id,
                            access_secret_key=config.mastodon_s3_access_secret_key,
@@ -147,7 +148,7 @@ def listener_respond(
     return response_content
 
 
-def prepare_content_for_archive(filtered_content, response_content):
+def prepare_content_for_archive(filtered_content, response_content, stylesheet_link):
     html_response_content = to_html(response_content)
 
     html_full = f'''
@@ -155,42 +156,10 @@ def prepare_content_for_archive(filtered_content, response_content):
                 <html>
                 <head>
                     <title>{filtered_content}</title>
-                    <style>
-                        body {{
-                            font-family: sans-serif;
-                            font-size: 16px;
-                            border-color: rgba(32, 33, 35, 0.5);
-                            background-color: rgba(68,70,84);
-                            color: white;
-                            }}
-                        pre {{
-                            background-color: black;
-                            color: white;
-                            font-size: 0.875em;
-                            font-weight: 400;
-                            line-height: 1.71429;
-                            overflow-x: auto;
-                            border-radius: 0.375rem;
-                            margin: 0px;
-                            padding: 5px;
-                        }}
-                        code {{
-                            overflow-wrap: normal;
-                            color: rgb(255, 255, 255);
-                            hyphens: none;
-                            line-height: 1.5;
-                            tab-size: 4;
-                            text-align: left;
-                            white-space-collapse: preserve;
-                            text-wrap: nowrap;
-                            word-break: normal;
-                            word-spacing: normal;
-                            background: none;
-                        }}
-                    </style>
+                    <link rel="stylesheet" type="text/css" href="{stylesheet_link}" />
                 </head>
                 <body>
-                    <strong{filtered_content}</strong>
+                    <p><strong{filtered_content}</strong></p>
                     {html_response_content}
                 </body>
                 </html>

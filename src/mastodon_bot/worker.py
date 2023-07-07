@@ -5,10 +5,9 @@ from mastodon import Mastodon
 from mastodon_bot.util import filter_words, remove_word, split_string_by_words, convo_first_status_id, download_image, detect_code_in_markdown
 from mastodon_bot.external import openai
 from mastodon_bot.external.s3 import s3Wrapper
-from mastodon_bot.commands._listen.listener_config import ListenerConfig
-from mastodon_bot.commands._listen.listener_response_type import ListenerResponseType
+from mastodon_bot.lib.listen.listener_config import ListenerConfig
+from mastodon_bot.lib.listen.listener_response_type import ListenerResponseType
 from mastodon_bot.markdown import to_html
-
 
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
@@ -98,9 +97,9 @@ def listener_respond(
             logging.debug(
                 "Detected code in chat response, posting link to code file")
 
-            stylesheet = f"https://{config.mastodon_s3_bucket_name}.s3.amazonaws.com/media_attachments/style/unroll.css"
+            stylesheet_link = f"https://{config.mastodon_s3_bucket_name}.s3.amazonaws.com/media_attachments/style/unroll.css"
             html_full = prepare_content_for_archive(
-                filtered_content=filtered_content, response_content=response_content, stylesheet=stylesheet)
+                filtered_content=filtered_content, response_content=response_content, stylesheet_link=stylesheet_link)
 
             s3 = s3Wrapper(access_key_id=config.mastodon_s3_access_key_id,
                            access_secret_key=config.mastodon_s3_access_secret_key,

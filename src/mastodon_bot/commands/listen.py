@@ -7,8 +7,8 @@ import logging
 from mastodon import Mastodon
 from mastodon_bot.util import error_info
 from mastodon_bot.worker import listener_respond
-from mastodon_bot.commands._listen.listener_config import ListenerConfig
-from mastodon_bot.commands._listen.listener_response_type import ListenerResponseType
+from mastodon_bot.lib.listen.listener_config import ListenerConfig
+from mastodon_bot.lib.listen.listener_response_type import ListenerResponseType
 from bs4 import BeautifulSoup
 from rq import Queue, Retry
 from redis import Redis

@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
 @dataclass
-class ListenerConfig():
+class ListenerConfig:
     def __init__(self, **kwargs):
 
         self.openai_api_key = kwargs.get("openai_api_key", None)
@@ -25,6 +25,11 @@ class ListenerConfig():
         self.rq_queue_name = kwargs.get("rq_queue_name", None)
         self.rq_queue_retry_attempts = kwargs.get("rq_queue_retry_attempts", 3)
         self.rq_queue_retry_delay = kwargs.get("rq_queue_retry_delay", 60)
+        self.mastodon_s3_bucket_name = kwargs.get("mastodon_s3_bucket_name", None)
+        self.mastodon_s3_bucket_prefix_path = kwargs.get("mastodon_s3_bucket_prefix_path", "/")
+        self.mastodon_s3_access_key_id = kwargs.get("mastodon_s3_access_key_id", None)
+        self.mastodon_s3_access_secret_key = kwargs.get("mastodon_s3_access_secret_key", None)
+
 
     def get_openai_api_key(self):
         return self.openai_api_key
@@ -133,3 +138,27 @@ class ListenerConfig():
     
     def set_rq_queue_retry_delay(self, rq_queue_retry_delay):
         self.rq_queue_retry_delay = rq_queue_retry_delay
+
+    def get_mastodon_s3_bucket_name(self):
+        return self.mastodon_s3_bucket_name
+
+    def set_mastodon_s3_bucket_name(self, mastodon_s3_bucket_name):
+        self.mastodon_s3_bucket_name = mastodon_s3_bucket_name
+    
+    def get_mastodon_s3_bucket_prefix_path(self):
+        return self.mastodon_s3_bucket_prefix_path
+    
+    def set_mastodon_s3_bucket_prefix_path(self, mastodon_s3_bucket_prefix_path):
+        self.mastodon_s3_bucket_prefix_path = mastodon_s3_bucket_prefix_path
+    
+    def get_mastodon_s3_access_key_id(self):
+        return self.mastodon_s3_access_key_id
+    
+    def set_mastodon_s3_access_key_id(self, mastodon_s3_access_key_id):
+        self.mastodon_s3_access_key_id = mastodon_s3_access_key_id
+    
+    def get_mastodon_s3_access_secret_key(self):
+        return self.mastodon_s3_access_secret_key
+    
+    def set_mastodon_s3_access_secret_key(self, mastodon_s3_access_secret_key):
+        self.mastodon_s3_access_secret_key = mastodon_s3_access_secret_key

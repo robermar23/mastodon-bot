@@ -189,6 +189,10 @@ class Listener(mastodon.StreamListener):
 @click.argument("rq_queue_name", required=False, type=click.STRING)
 @click.argument("rq_queue_retry_attempts", required=False, type=click.INT)
 @click.argument("rq_queue_retry_delay", required=False, type=click.INT)
+@click.argument("mastodon_s3_bucket_name", required=False, type=click.STRING)
+@click.argument("mastodon_s3_bucket_prefix_path", required=False, type=click.STRING)
+@click.argument("mastodon_s3_access_key_id", required=False, type=click.STRING)
+@click.argument("mastodon_s3_access_secret_key", required=False, type=click.STRING)
 def listen(
     ctx,
     mastodon_host,
@@ -209,6 +213,10 @@ def listen(
     rq_queue_name,
     rq_queue_retry_attempts,
     rq_queue_retry_delay,
+    mastodon_s3_bucket_name,
+    mastodon_s3_bucket_prefix_path,
+    mastodon_s3_access_key_id,
+    mastodon_s3_access_secret_key
 ):
     """
     CLI Listen to Mastodon User in a blocking manner
@@ -233,6 +241,12 @@ def listen(
     logging.debug(f"rq_queue_name: {rq_queue_name}")
     logging.debug(f"rq_queue_retry_attempts: {rq_queue_retry_attempts}")
     logging.debug(f"rq_queue_retry_delay: {rq_queue_retry_delay}")
+
+    logging.debug(f"mastodon_s3_bucket_name: {mastodon_s3_bucket_name}")
+    logging.debug(f"mastodon_s3_bucket_prefix_path: {mastodon_s3_bucket_prefix_path}")
+    logging.debug(f"mastodon_s3_access_key_id: {mastodon_s3_access_key_id}")
+    logging.debug(f"mastodon_s3_access_secret_key: {mastodon_s3_access_secret_key}")
+
 
     mastodon_api = Mastodon(
         client_id=mastodon_client_id,
@@ -264,7 +278,11 @@ def listen(
                 mastodon_client_id=mastodon_client_id,
                 mastodon_client_secret=mastodon_client_secret,
                 mastodon_access_token=mastodon_access_token,
-                mastodon_host=mastodon_host
+                mastodon_host=mastodon_host,
+                mastodon_s3_bucket_name=mastodon_s3_bucket_name,
+                mastodon_s3_bucket_prefix_path=mastodon_s3_bucket_prefix_path,
+                mastodon_s3_access_key_id=mastodon_s3_access_key_id,
+                mastodon_s3_access_secret_key=mastodon_s3_access_secret_key
             )
         )
 

@@ -2,10 +2,13 @@
 import time
 import logging
 from mastodon import Mastodon
-from mastodon_bot.util import filter_words, remove_word, split_string_by_words, convo_first_status_id, download_image
+from mastodon_bot.util import filter_words, remove_word, split_string_by_words, convo_first_status_id, download_image, detect_code_in_markdown
 from mastodon_bot.external import openai
+from mastodon_bot.external.s3 import s3Wrapper
 from mastodon_bot.commands._listen.listener_config import ListenerConfig
 from mastodon_bot.commands._listen.listener_response_type import ListenerResponseType
+from mastodon_bot.markdown import to_html
+
 
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
@@ -91,6 +94,28 @@ def listener_respond(
             convo_id=str(status_id), prompt=filtered_content
         )
 
+        if detect_code_in_markdown(response_content):
+            logging.debug(
+                "Detected code in chat response, posting link to code file")
+
+            html_full = prepare_content_for_archive(
+                filtered_content, response_content)
+
+            s3 = s3Wrapper(access_key_id=config.mastodon_s3_access_key_id,
+                           access_secret_key=config.mastodon_s3_access_secret_key,
+                           bucket_name=config.mastodon_s3_bucket_name,
+                           prefix_path=config.mastodon_s3_bucket_prefix_path)
+
+            s3_file_name = f"{status_id}.html"
+            if in_reply_to_id:
+                s3_file_name = f"{status_id}_{in_reply_to_id}.html"
+
+            s3_url = s3.upload_string_to_s3(html_full, s3_file_name)
+
+            logging.debug(f"prefixing response with unrolled file {s3_url}")
+
+            response_content += f"\n\n  View Unrolled: {s3_url}"
+
     if config.response_type == ListenerResponseType.OPEN_AI_IMAGE:
         response_content = get_image_response_content(
             mastodon_api=mastodon_api,
@@ -120,6 +145,58 @@ def listener_respond(
 
     logging.debug("\n")
     return response_content
+
+
+def prepare_content_for_archive(filtered_content, response_content):
+    html_response_content = to_html(response_content)
+
+    html_full = f'''
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>{filtered_content}</title>
+                    <style>
+                        body {{
+                            font-family: sans-serif;
+                            font-size: 16px;
+                            border-color: rgba(32, 33, 35, 0.5);
+                            background-color: rgba(68,70,84);
+                            color: white;
+                            }}
+                        pre {{
+                            background-color: black;
+                            color: white;
+                            font-size: 0.875em;
+                            font-weight: 400;
+                            line-height: 1.71429;
+                            overflow-x: auto;
+                            border-radius: 0.375rem;
+                            margin: 0px;
+                            padding: 5px;
+                        }}
+                        code {{
+                            overflow-wrap: normal;
+                            color: rgb(255, 255, 255);
+                            hyphens: none;
+                            line-height: 1.5;
+                            tab-size: 4;
+                            text-align: left;
+                            white-space-collapse: preserve;
+                            text-wrap: nowrap;
+                            word-break: normal;
+                            word-spacing: normal;
+                            background: none;
+                        }}
+                    </style>
+                </head>
+                <body>
+                    <strong{filtered_content}</strong>
+                    {html_response_content}
+                </body>
+                </html>
+            '''
+
+    return html_full
 
 
 def get_image_response_content(mastodon_api, openai_api_key, image_url, filtered_content, media_ids):

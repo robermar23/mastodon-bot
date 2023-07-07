@@ -5,6 +5,7 @@ import requests
 import logging
 import base64
 import textwrap
+import re
 
 def stopwatch(message: str):
     """Context manager to print how long a block of code took."""
@@ -147,3 +148,41 @@ def convo_first_status_id(mastodon_api, in_reply_to_id):
 
     status_id = last_status_id
     return status_id
+
+def detect_code_in_markdown(markdown_text):
+    # Regular expression pattern to match code blocks in Markdown
+    code_block_pattern = r"```[\w+\s]*\n([\s\S]*?)\n```"
+
+    # Regular expression pattern to match inline code in Markdown
+    inline_code_pattern = r"`([^`]+)`"
+
+    # Find code blocks in the Markdown text
+    code_blocks = re.findall(code_block_pattern, markdown_text, re.MULTILINE | re.DOTALL)
+
+    # Find inline code in the Markdown text
+    inline_code = re.findall(inline_code_pattern, markdown_text)
+
+    return code_blocks or inline_code
+
+# def apply_rtf_to_response(markdown_text:str):
+#     # Regular expression pattern to match code blocks in Markdown
+#     code_block_pattern = r"```[\w+\s]*\n([\s\S]*?)\n```"
+
+#     # Regular expression pattern to match inline code in Markdown
+#     inline_code_pattern = r"`([^`]+)`"
+
+#     # Find code blocks in the Markdown text
+#     code_blocks = re.findall(code_block_pattern, markdown_text, re.MULTILINE | re.DOTALL)
+
+#     # Find inline code in the Markdown text
+#     inline_code = re.findall(inline_code_pattern, markdown_text)
+
+#     # Convert code blocks to RTF
+#     rtf_code_blocks = []
+#     for code_block in code_blocks:
+#         rtf_code_blocks.append(apply_rtf_to_code_block(code_block))
+
+#     # Convert inline code to RTF
+#     rtf_inline_code = []
+#     for inline_code_block in inline_code:
+#         rtf_inline_code.append(apply_rtf_to_inline_code(inline_code_block))

@@ -258,7 +258,7 @@ class OpenAiChat:
             logging.error(
                 f"open api error, http_status: {e.http_status}, error: {e.error}"
             )
-            return "beep bop. bot beep. Dave? Dave what is going on?"
+            raise e
 
     def init_messages(self, prompt):
         result = []

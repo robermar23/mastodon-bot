@@ -42,16 +42,16 @@ class UtilTestHandler(unittest.TestCase):
         removed = remove_word(string=test_string, word="this")
         self.assertEqual(removed, "I want to remove word as appears three times")
 
-    def test_download_image(self):
-        from mastodon_bot.util import download_image
+    def test_download_remote_file(self):
+        from mastodon_bot.util import download_remote_file
         import requests
 
-        mock_download_image = requests.Response()
-        mock_download_image._content = b'this will be image encoded'
-        mock_download_image.status_code = 200
+        mock_download_remote_file = requests.Response()
+        mock_download_remote_file._content = b'this will be image encoded'
+        mock_download_remote_file.status_code = 200
 
-        with patch('requests.get', return_value=mock_download_image) as mock_get:
-            response = download_image("http://www.example.com/image.png")
+        with patch('requests.get', return_value=mock_download_remote_file) as mock_get:
+            response = download_remote_file("http://www.example.com/image.png")
 
             self.assertEqual(response, b'this will be image encoded')
             mock_get.assert_called_once_with('http://www.example.com/image.png')

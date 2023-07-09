@@ -2,7 +2,7 @@
 import time
 import logging
 from mastodon import Mastodon
-from mastodon_bot.util import filter_words, remove_word, split_string_by_words, convo_first_status_id, download_image, detect_code_in_markdown
+from mastodon_bot.util import filter_words, remove_word, split_string_by_words, convo_first_status_id, download_remote_file, detect_code_in_markdown
 from mastodon_bot.external import openai
 from mastodon_bot.external.s3 import s3Wrapper
 from mastodon_bot.lib.listen.listener_config import ListenerConfig
@@ -125,6 +125,12 @@ def listener_respond(
             media_ids=media_ids
         )
 
+    if config.response_type == ListenerResponseType.OPEN_AI_TRANSCRIBE:
+        response_content = get_transcribe_response_content(
+            openai_api_key=config.openai_api_key,
+            audio_url=image_url,
+        )
+
     logging.debug(f"status_post: {response_content}")
 
     if in_reply_to_id == None:
@@ -167,12 +173,25 @@ def prepare_content_for_archive(filtered_content, response_content, stylesheet_l
     return html_full
 
 
+def get_transcribe_response_content(openai_api_key, audio_url):
+
+    transcribe_ai = openai.OpenAiTranscribe(openai_api_key=openai_api_key)
+
+    if audio_url:
+        audio_bytes = download_remote_file(audio_url)
+    else:
+        return "No audio provided, cannot transcribe"
+
+    transcribe_result = transcribe_ai.create(audio_file=audio_bytes)
+
+    return transcribe_result
+
 def get_image_response_content(mastodon_api, openai_api_key, image_url, filtered_content, media_ids):
 
     image_ai = openai.OpenAiImage(openai_api_key)
 
     if image_url:
-        image_byes = download_image(image_url)
+        image_byes = download_remote_file(image_url)
 
     if image_url and filtered_content == "variation":
         image_result = image_ai.variation(image=image_byes)

@@ -366,3 +366,42 @@ class OpenAiImage:
                     f"open api error, http_status: {e.http_status}, error: {e.error}"
                 )
                 return "beep bop. bot beep. Dave? Dave what is going on?"
+
+class OpenAiTranscribe:
+    """
+    Interact with OpenAI's transcribe endpoint
+    """
+
+    def __init__(self, openai_api_key):
+        self.n = 1
+        self.api_key = openai_api_key
+        self.model = "whisper-1"
+        openai.api_key = self.api_key
+
+    def create(self, audio_file):
+        """
+        Prompt chat to transcribe
+        """
+
+        result = None
+
+        logging.debug(f"creating transcription from audio file")
+
+        try:
+            result = openai.Audio.transcribe(self.model, audio_file)
+
+            # if "data" in response and len(response["data"]) > 0:
+            #     b64 = response["data"][0].b64_json
+            #     result = base64.b64decode(b64)
+            # else:
+            #     logging.debug(f"response unexpected: {response}")
+
+            return result
+
+        except openai.error.OpenAIError as e:
+            logging.error(
+                f"open api error, http_status: {e.http_status}, error: {e.error}"
+            )
+            return "beep bop. bot beep. Dave? Dave what is going on?" 
+
+        

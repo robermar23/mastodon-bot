@@ -121,7 +121,7 @@ def error_info(e):
     return exc_type, fname, exc_tb.tb_lineno
 
 
-def download_image(url):
+def download_remote_file(url):
     logging.debug(f"downloading image: {url}")
     response = requests.get(url)
     response.raise_for_status()

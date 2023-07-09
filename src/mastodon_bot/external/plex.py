@@ -4,7 +4,7 @@ import urllib.parse
 from datetime import datetime, timedelta
 from plexapi.server import PlexServer
 from mastodon_bot.util import error_info
-from mastodon_bot.util import download_image
+from mastodon_bot.util import download_remote_file
 
 
 class PlexInstance:
@@ -64,7 +64,7 @@ class PlexRecentlyAddedItem:
         return desc
 
     def get_poster_image_data(self):
-        return download_image(self.media_item.posterUrl)
+        return download_remote_file(self.media_item.posterUrl)
 
     def get_post_image_file_name(self):
         return f"{self.media_item.title.replace(' ', '_')}.png"

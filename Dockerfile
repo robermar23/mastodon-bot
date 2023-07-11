@@ -26,7 +26,8 @@ RUN apk update && apk add --no-cache \
   openssl-dev \
   cargo \
   pkgconfig \
-  git
+  git \
+  cython
 
 WORKDIR /app
 

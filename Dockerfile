@@ -5,6 +5,7 @@ RUN apk update && apk add --no-cache \
   python3-dev \
   py3-setuptools \
   gcc \
+  g++ \
   libc-dev \
   tiff-dev \
   jpeg-dev \

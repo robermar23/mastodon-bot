@@ -1,5 +1,5 @@
 # tests not to commit
-test/test_worker2.py
+test/test_worker.py
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

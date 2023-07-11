@@ -1,13 +1,17 @@
 
 import time
 import logging
+import uuid
 from mastodon import Mastodon
-from mastodon_bot.util import filter_words, remove_word, split_string_by_words, convo_first_status_id, download_remote_file, detect_code_in_markdown
+from mastodon_bot.util import filter_words, remove_word, split_string_by_words, convo_first_status_id, download_remote_file, save_local_file, detect_code_in_markdown, extract_uris
 from mastodon_bot.external import openai
 from mastodon_bot.external.s3 import s3Wrapper
 from mastodon_bot.lib.listen.listener_config import ListenerConfig
 from mastodon_bot.lib.listen.listener_response_type import ListenerResponseType
 from mastodon_bot.markdown import to_html
+from mastodon_bot.lib.work.work_audio import download_youtube_audio
+
+import re
 
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
@@ -97,24 +101,7 @@ def listener_respond(
             logging.debug(
                 "Detected code in chat response, posting link to code file")
 
-            stylesheet_link = f"https://{config.mastodon_s3_bucket_name}.s3.amazonaws.com/media_attachments/style/unroll.css"
-            html_full = prepare_content_for_archive(
-                filtered_content=filtered_content, response_content=response_content, stylesheet_link=stylesheet_link)
-
-            s3 = s3Wrapper(access_key_id=config.mastodon_s3_access_key_id,
-                           access_secret_key=config.mastodon_s3_access_secret_key,
-                           bucket_name=config.mastodon_s3_bucket_name,
-                           prefix_path=config.mastodon_s3_bucket_prefix_path)
-
-            s3_file_name = f"{status_id}.html"
-            if in_reply_to_id:
-                s3_file_name = f"{status_id}_{in_reply_to_id}.html"
-
-            s3_url = s3.upload_string_to_s3(html_full, s3_file_name)
-
-            logging.debug(f"prefixing response with unrolled file {s3_url}")
-
-            response_content += f"\n\n  View Unrolled: {s3_url}"
+            unroll_response_content(in_reply_to_id, status_id, config, filtered_content, response_content)
 
     if config.response_type == ListenerResponseType.OPEN_AI_IMAGE:
         response_content = get_image_response_content(
@@ -126,11 +113,33 @@ def listener_respond(
         )
 
     if config.response_type == ListenerResponseType.OPEN_AI_TRANSCRIBE:
-        response_content = get_transcribe_response_content(
-            openai_api_key=config.openai_api_key,
-            audio_url=image_url,
-        )
-
+        if image_url or len(image_url) > 0:
+            logging.debug(f"Transcribing from uploaded file: {image_url}")
+            response_content = get_transcribe_response_content(
+                audio_model= config.chat_model,
+                openai_api_key=config.openai_api_key,
+                audio_url=image_url
+            )
+        else:
+            logging.debug(f"Transcribing from posted content: {filtered_content}")
+            response_content = ""
+            #attempt to get url(s) to transcribe from content of post
+            uris_to_try = extract_uris(content=filtered_content)
+            for uri in uris_to_try:
+                try:
+                    transcribed = get_transcribe_response_content(
+                        audio_model= config.chat_model,
+                        openai_api_key=config.openai_api_key,
+                        audio_url=uri
+                    )
+                    response_content += f"{uri}: \n\n {transcribed}\n\n"
+                except Exception as e:
+                    logging.debug(f"Error trying to transcribe {uri}: {e}")
+                    
+        if len(response_content) > 1000:
+            logging.debug(f"Response content is long, posting link to transcription file")
+            unroll_response_content(in_reply_to_id, status_id, config, filtered_content, response_content)
+            
     logging.debug(f"status_post: {response_content}")
 
     if in_reply_to_id == None:
@@ -151,6 +160,26 @@ def listener_respond(
 
     logging.debug("\n")
     return response_content
+
+def unroll_response_content(in_reply_to_id, status_id, config, filtered_content, response_content):
+    stylesheet_link = f"https://{config.mastodon_s3_bucket_name}.s3.amazonaws.com/media_attachments/style/unroll.css"
+    html_full = prepare_content_for_archive(
+                filtered_content=filtered_content, response_content=response_content, stylesheet_link=stylesheet_link)
+
+    s3 = s3Wrapper(access_key_id=config.mastodon_s3_access_key_id,
+                           access_secret_key=config.mastodon_s3_access_secret_key,
+                           bucket_name=config.mastodon_s3_bucket_name,
+                           prefix_path=config.mastodon_s3_bucket_prefix_path)
+
+    s3_file_name = f"{status_id}.html"
+    if in_reply_to_id:
+        s3_file_name = f"{status_id}_{in_reply_to_id}.html"
+
+    s3_url = s3.upload_string_to_s3(html_full, s3_file_name)
+
+    logging.debug(f"prefixing response with unrolled file {s3_url}")
+
+    response_content += f"\n\n  View unrolled: {s3_url}"
 
 
 def prepare_content_for_archive(filtered_content, response_content, stylesheet_link):
@@ -173,16 +202,27 @@ def prepare_content_for_archive(filtered_content, response_content, stylesheet_l
     return html_full
 
 
-def get_transcribe_response_content(openai_api_key, audio_url):
+def get_transcribe_response_content(openai_api_key, audio_url, audio_model):
 
-    transcribe_ai = openai.OpenAiTranscribe(openai_api_key=openai_api_key)
+    transcribe_ai = openai.OpenAiTranscribe(openai_api_key=openai_api_key, model=audio_model)
 
-    if audio_url:
-        audio_bytes = download_remote_file(audio_url)
+    
+    if audio_url and len(audio_url) > 0:
+
+        #does audio_url contain youtube link?
+        youtube_link_regex = r"https://www.youtube.com/watch\?v="
+        youtube_link_match = re.search(youtube_link_regex, audio_url)
+        if youtube_link_match:
+            temp_file_path = f"/tmp/audio_{str(uuid.uuid4())}.mp4"
+            download_youtube_audio(url=audio_url, filename=temp_file_path)
+        else:
+            temp_file_path = f"/tmp/audio_{str(uuid.uuid4())}.mp3"
+            audio_bytes = download_remote_file(audio_url)
+            save_local_file(content=audio_bytes, filename=temp_file_path)
     else:
-        return "No audio provided, cannot transcribe"
+        return "No valid audio provided, cannot transcribe"
 
-    transcribe_result = transcribe_ai.create(audio_file=audio_bytes)
+    transcribe_result = transcribe_ai.create(audio_file=temp_file_path)
 
     return transcribe_result
 

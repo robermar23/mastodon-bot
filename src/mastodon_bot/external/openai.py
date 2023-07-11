@@ -8,6 +8,7 @@ from io import BytesIO
 from mastodon_bot.timed_dict import timed_dict
 from mastodon_bot.redis_timed_dict import redis_timed_dict
 from mastodon_bot.util import base64_encode_long_string
+from mastodon_bot.lib.work.work_audio import load_audio
 
 
 class OpenAiPrompt:
@@ -365,17 +366,16 @@ class OpenAiImage:
                 logging.error(
                     f"open api error, http_status: {e.http_status}, error: {e.error}"
                 )
-                return "beep bop. bot beep. Dave? Dave what is going on?"
+                raise e
 
 class OpenAiTranscribe:
     """
     Interact with OpenAI's transcribe endpoint
     """
 
-    def __init__(self, openai_api_key):
-        self.n = 1
+    def __init__(self, openai_api_key, model="whisper-1"):
         self.api_key = openai_api_key
-        self.model = "whisper-1"
+        self.model = model
         openai.api_key = self.api_key
 
     def create(self, audio_file):
@@ -388,7 +388,9 @@ class OpenAiTranscribe:
         logging.debug(f"creating transcription from audio file")
 
         try:
-            result = openai.Audio.transcribe(self.model, audio_file)
+            #audio = load_audio(audio_file)
+            audio = open(audio_file, "rb")
+            result = openai.Audio.transcribe(self.model, audio)
 
             # if "data" in response and len(response["data"]) > 0:
             #     b64 = response["data"][0].b64_json
@@ -396,12 +398,12 @@ class OpenAiTranscribe:
             # else:
             #     logging.debug(f"response unexpected: {response}")
 
-            return result
+            return result.text
 
         except openai.error.OpenAIError as e:
             logging.error(
                 f"open api error, http_status: {e.http_status}, error: {e.error}"
             )
-            return "beep bop. bot beep. Dave? Dave what is going on?" 
+            raise e
 
         

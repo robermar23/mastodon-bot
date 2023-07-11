@@ -121,21 +121,34 @@ def error_info(e):
     return exc_type, fname, exc_tb.tb_lineno
 
 
-def download_remote_file(url):
-    logging.debug(f"downloading image: {url}")
+def download_remote_file(url: str) -> str:
+    logging.debug(f"downloading file: {url}")
     response = requests.get(url)
     response.raise_for_status()
     return response.content
 
+def save_local_file(content, filename):
+    logging.debug(f"saving file: {filename}")
+    with open(filename, 'wb') as f:
+        f.write(content)
 
-def base64_encode_long_string(long_string):
+def extract_uris(content: str) -> list[any]:
+    logging.debug(f"extracting URIs: {content}")
+    # regular expression pattern for full URIs
+    pattern = re.compile(r"https?://[\w\-\.]+\.\w{2,}(?:/[\w\.?=%&=\-+]*)*|ftp://[\w\-\.]+\.\w{2,}(?:/[\w\.?=%&=\-+]*)*")
+    # search for URIs in the text
+    uris = pattern.findall(content)
+    return uris
+
+
+def base64_encode_long_string(long_string) -> str:
     long_string_bytes = long_string.encode('utf-8')
     encoded_bytes = base64.b64encode(long_string_bytes)
     encoded_string = encoded_bytes.decode('utf-8')
     return encoded_string
 
 
-def convo_first_status_id(mastodon_api, in_reply_to_id):
+def convo_first_status_id(mastodon_api, in_reply_to_id) -> str:
     first_status = False
     last_status_id = in_reply_to_id
     while not first_status:

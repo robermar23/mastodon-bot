@@ -6,6 +6,7 @@ import logging
 import base64
 import textwrap
 import re
+from urllib.parse import urlparse
 
 def stopwatch(message: str):
     """Context manager to print how long a block of code took."""
@@ -120,12 +121,27 @@ def error_info(e):
     fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
     return exc_type, fname, exc_tb.tb_lineno
 
+def get_file_extension(url, response):
+    # Extract the file extension from the URL or the content type
+    parsed_url = urlparse(url)
+    file_extension = os.path.splitext(parsed_url.path)[1]
+    if not file_extension:
+        file_extension = os.path.splitext(response.url)[1]
+    return file_extension
 
-def download_remote_file(url: str) -> str:
+def download_remote_file(url: str, allow_content_types: list = None) -> str:
     logging.debug(f"downloading file: {url}")
     response = requests.get(url)
     response.raise_for_status()
-    return response.content
+
+    if allow_content_types and len(allow_content_types) > 0:
+        content_type = response.headers['content-type']
+        if content_type not in allow_content_types:
+            raise Exception(f"Content type {content_type} not allowed")
+    
+    file_extension = get_file_extension(url, response)
+
+    return response.content, file_extension
 
 def save_local_file(content, filename):
     logging.debug(f"saving file: {filename}")

@@ -2,6 +2,8 @@
 import time
 import logging
 import uuid
+import re
+import os
 from mastodon import Mastodon
 from mastodon_bot.util import filter_words, remove_word, split_string_by_words, convo_first_status_id, download_remote_file, save_local_file, detect_code_in_markdown, extract_uris
 from mastodon_bot.external import openai
@@ -10,8 +12,6 @@ from mastodon_bot.lib.listen.listener_config import ListenerConfig
 from mastodon_bot.lib.listen.listener_response_type import ListenerResponseType
 from mastodon_bot.markdown import to_html
 from mastodon_bot.lib.work.work_audio import download_youtube_audio
-
-import re
 
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
@@ -113,7 +113,7 @@ def listener_respond(
         )
 
     if config.response_type == ListenerResponseType.OPEN_AI_TRANSCRIBE:
-        if image_url or len(image_url) > 0:
+        if image_url is not None:
             logging.debug(f"Transcribing from uploaded file: {image_url}")
             response_content = get_transcribe_response_content(
                 audio_model= config.chat_model,
@@ -139,7 +139,9 @@ def listener_respond(
         if len(response_content) > 1000:
             logging.debug(f"Response content is long, posting link to transcription file")
             unroll_response_content(in_reply_to_id, status_id, config, filtered_content, response_content)
-            
+
+    #if config.response_type == ListenerResponseType.TEXT_TO_SPEECH:
+
     logging.debug(f"status_post: {response_content}")
 
     if in_reply_to_id == None:
@@ -206,23 +208,28 @@ def get_transcribe_response_content(openai_api_key, audio_url, audio_model):
 
     transcribe_ai = openai.OpenAiTranscribe(openai_api_key=openai_api_key, model=audio_model)
 
-    
+    temp_file_path = ""
+
     if audio_url and len(audio_url) > 0:
 
-        #does audio_url contain youtube link?
+        #does audio_url contain youtube link?    
         youtube_link_regex = r"https://www.youtube.com/watch\?v="
         youtube_link_match = re.search(youtube_link_regex, audio_url)
         if youtube_link_match:
             temp_file_path = f"/tmp/audio_{str(uuid.uuid4())}.mp4"
             download_youtube_audio(url=audio_url, filename=temp_file_path)
         else:
-            temp_file_path = f"/tmp/audio_{str(uuid.uuid4())}.mp3"
-            audio_bytes = download_remote_file(audio_url)
+            audio_bytes, file_extension = download_remote_file(audio_url, allow_content_types=['audio/mp3', 'audio/mpeg', 'video/mp4'])
+            temp_file_path = f"/tmp/audio_{str(uuid.uuid4())}.{file_extension}"
             save_local_file(content=audio_bytes, filename=temp_file_path)
     else:
         return "No valid audio provided, cannot transcribe"
 
     transcribe_result = transcribe_ai.create(audio_file=temp_file_path)
+
+    #we now need to delete the temp file path if it exists
+    if os.path.exists(temp_file_path):
+        os.remove(temp_file_path)
 
     return transcribe_result
 
@@ -231,7 +238,7 @@ def get_image_response_content(mastodon_api, openai_api_key, image_url, filtered
     image_ai = openai.OpenAiImage(openai_api_key)
 
     if image_url:
-        image_byes = download_remote_file(image_url)
+        image_byes, file_extension = download_remote_file(image_url)
 
     if image_url and filtered_content == "variation":
         image_result = image_ai.variation(image=image_byes)

@@ -64,7 +64,8 @@ class PlexRecentlyAddedItem:
         return desc
 
     def get_poster_image_data(self):
-        return download_remote_file(self.media_item.posterUrl)
+        content_data, file_extension = download_remote_file(self.media_item.posterUrl)
+        return content_data
 
     def get_post_image_file_name(self):
         return f"{self.media_item.title.replace(' ', '_')}.png"

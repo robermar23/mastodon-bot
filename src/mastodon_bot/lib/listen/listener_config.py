@@ -25,6 +25,7 @@ class ListenerConfig:
         self.rq_queue_name = kwargs.get("rq_queue_name", None)
         self.rq_queue_retry_attempts = kwargs.get("rq_queue_retry_attempts", 3)
         self.rq_queue_retry_delay = kwargs.get("rq_queue_retry_delay", 60)
+        self.rq_queue_task_timeout = kwargs.get("rq_queue_task_timeout", 3600)
         self.mastodon_s3_bucket_name = kwargs.get("mastodon_s3_bucket_name", None)
         self.mastodon_s3_bucket_prefix_path = kwargs.get("mastodon_s3_bucket_prefix_path", "/")
         self.mastodon_s3_access_key_id = kwargs.get("mastodon_s3_access_key_id", None)
@@ -162,3 +163,10 @@ class ListenerConfig:
     
     def set_mastodon_s3_access_secret_key(self, mastodon_s3_access_secret_key):
         self.mastodon_s3_access_secret_key = mastodon_s3_access_secret_key
+    
+    def get_rq_queue_task_timeout(self):
+        return self.rq_queue_task_timeout
+    
+    def set_rq_queue_task_timeout(self, rq_queue_task_timeout):
+        self.rq_queue_task_timeout = rq_queue_task_timeout
+        

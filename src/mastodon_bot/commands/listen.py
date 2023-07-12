@@ -154,7 +154,9 @@ class Listener(mastodon.StreamListener):
                     'config': self.config
                 },
                 retry=Retry(max=self.config.rq_queue_retry_attempts,
-                            interval=self.config.rq_queue_retry_delay)
+                            interval=self.config.rq_queue_retry_delay),
+                job_timeout=self.config.rq_queue_job_timeout
+                
             )
         else:
             listener_respond(
@@ -189,6 +191,7 @@ class Listener(mastodon.StreamListener):
 @click.argument("rq_queue_name", required=False, type=click.STRING)
 @click.argument("rq_queue_retry_attempts", required=False, type=click.INT)
 @click.argument("rq_queue_retry_delay", required=False, type=click.INT)
+@click.argument("rq_queue_task_timeout", required=False, type=click.INT)
 @click.argument("mastodon_s3_bucket_name", required=False, type=click.STRING)
 @click.argument("mastodon_s3_bucket_prefix_path", required=False, type=click.STRING)
 @click.argument("mastodon_s3_access_key_id", required=False, type=click.STRING)
@@ -213,6 +216,7 @@ def listen(
     rq_queue_name,
     rq_queue_retry_attempts,
     rq_queue_retry_delay,
+    rq_queue_task_timeout,
     mastodon_s3_bucket_name,
     mastodon_s3_bucket_prefix_path,
     mastodon_s3_access_key_id,
@@ -241,7 +245,7 @@ def listen(
     logging.debug(f"rq_queue_name: {rq_queue_name}")
     logging.debug(f"rq_queue_retry_attempts: {rq_queue_retry_attempts}")
     logging.debug(f"rq_queue_retry_delay: {rq_queue_retry_delay}")
-
+    logging.debug(f"rq_queue_task_timeout: {rq_queue_task_timeout}")
     logging.debug(f"mastodon_s3_bucket_name: {mastodon_s3_bucket_name}")
     logging.debug(f"mastodon_s3_bucket_prefix_path: {mastodon_s3_bucket_prefix_path}")
     logging.debug(f"mastodon_s3_access_key_id: {mastodon_s3_access_key_id}")
@@ -275,6 +279,7 @@ def listen(
                 rq_queue_name=rq_queue_name,
                 rq_queue_retry_attempts=rq_queue_retry_attempts,
                 rq_queue_retry_delay=rq_queue_retry_delay,
+                rq_queue_task_timeout=rq_queue_task_timeout,
                 mastodon_client_id=mastodon_client_id,
                 mastodon_client_secret=mastodon_client_secret,
                 mastodon_access_token=mastodon_access_token,

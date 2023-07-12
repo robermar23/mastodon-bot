@@ -8,8 +8,6 @@ from io import BytesIO
 from mastodon_bot.timed_dict import timed_dict
 from mastodon_bot.redis_timed_dict import redis_timed_dict
 from mastodon_bot.util import base64_encode_long_string
-from mastodon_bot.lib.work.work_audio import load_audio
-
 
 class OpenAiPrompt:
     """
@@ -388,15 +386,8 @@ class OpenAiTranscribe:
         logging.debug(f"creating transcription from audio file")
 
         try:
-            #audio = load_audio(audio_file)
             audio = open(audio_file, "rb")
             result = openai.Audio.transcribe(self.model, audio)
-
-            # if "data" in response and len(response["data"]) > 0:
-            #     b64 = response["data"][0].b64_json
-            #     result = base64.b64decode(b64)
-            # else:
-            #     logging.debug(f"response unexpected: {response}")
 
             return result.text
 

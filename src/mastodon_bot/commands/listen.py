@@ -155,7 +155,7 @@ class Listener(mastodon.StreamListener):
                 },
                 retry=Retry(max=self.config.rq_queue_retry_attempts,
                             interval=self.config.rq_queue_retry_delay),
-                job_timeout=self.config.rq_queue_job_timeout
+                job_timeout=self.config.rq_queue_task_timeout
                 
             )
         else:
@@ -223,7 +223,55 @@ def listen(
     mastodon_s3_access_secret_key
 ):
     """
-    CLI Listen to Mastodon User in a blocking manner
+    Listen to Mastodon User streaming events and act
+
+    MASTODON_HOST: uri to mastodon instance
+
+    MASTODON_CLIENT_ID:: user oauth app client id
+
+    MASTODON_CLIENT_SECRET: user oauth app client secret
+
+    MASTODON_ACCESS_TOKEN: user oauth app access token
+
+    OPENAI_API_KEY: openai.com api key
+
+    RESPONSE_TYPE: REVERSE_STRING, OPEN_AI_CHAT, OPEN_AI_IMAGE, OPEN_AI_PROMPT, OPEN_AI_TRANSCRIBE, TEXT_TO_SPEECH
+
+    OPENAI_CHAT_MODEL: the chat model to use from openai, see: https://platform.openai.com/docs/models
+
+    OPENAI_CHAT_TEMPERATURE: What sampling temperature to use, between 0 and 2. Higher values like 0.8 will make the output more random, while lower values like 0.2 will make it more focused and deterministic.
+
+    OPENAI_CHAT_MAX_TOKENS: The maximum number of tokens to generate in the chat completion. The total length of input tokens and generated tokens is limited by the model's context length.
+
+    OPENAI_CHAT_TOP_P: An alternative to sampling with temperature, called nucleus sampling, where the model considers the results of the tokens with top_p probability mass. So 0.1 means only the tokens comprising the top 10% probability mass are considered.
+
+    OPENAI_CHAT_FREQUENCY_PENALTY: Number between -2.0 and 2.0. Positive values penalize new tokens based on their existing frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim.
+
+    OPENAI_CHAT_PRESENSE_PENALTY: Number between -2.0 and 2.0. Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics.
+
+    OPENAI_CHAT_MAX_AGE_HOURS: The length of time in hours to keep a given mastodon conversation in cache to be used by in context based chatgpt conversations
+
+    OPENAI_CHAT_PERSONA: The persona the bot should take on as part of the openai chat response
+
+    RQ_REDIS_CONNECTION: The full redis uri to use for caching mastodon conversations and for rq job state
+
+    RQ_REDIS_NAME: The rq queue name to post and pull tasks too/from.
+
+    RQ_REDIS_RETRY_ATTEMPTS: The number of times to retry a given task, such as interactions with openai's api
+
+    RQ_REDIS_RETRY_DELAY: The delay between reties for a given task
+
+    RQ_QUEUE_TASK_TIMEOUT: The timeout, in seconds, to allow for a given task to take before it is marked as failed
+
+    MASTODON_S3_BUCKET_NAME: The s3 bucket to use to place unrolled items
+
+    MASTODON_S3_BUCKET_PREFIX_PATH: The path/folder to use to place unrolled items in the s3 bucket
+
+    MASTODON_S3_ACCESS_KEY_ID: The iam user access key id to use to interact with the defined s3 bucket
+
+    MASTODON_S3__ACCESS_SECRET_KEY: The iam user secret key to use to interact with the defined s3 bucket
+
+
     """
 
     logging.debug(f"mastodon_host: {mastodon_host}")

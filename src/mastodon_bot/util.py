@@ -198,6 +198,26 @@ def detect_code_in_markdown(markdown_text):
 
     return code_blocks or inline_code
 
+def break_long_string_into_paragraphs(long_string, sentences_per_paragraph):
+
+    # looks for a period, exclamation mark, or question mark followed by one or more whitespace characters
+    sentences = re.split(r'(?<=[.?!])\s+', long_string) 
+
+    paragraphs = []
+    current_paragraph = []
+    for i, sentence in enumerate(sentences):
+        current_paragraph.append(sentence)
+
+        if (i + 1) % sentences_per_paragraph == 0:
+            paragraphs.append(". ".join(current_paragraph))
+            current_paragraph = []
+
+    # Add any remaining sentences as a last paragraph
+    if current_paragraph:
+        paragraphs.append(". ".join(current_paragraph))
+
+    return paragraphs
+
 # def apply_rtf_to_response(markdown_text:str):
 #     # Regular expression pattern to match code blocks in Markdown
 #     code_block_pattern = r"```[\w+\s]*\n([\s\S]*?)\n```"

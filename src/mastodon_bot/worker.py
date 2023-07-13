@@ -6,7 +6,7 @@ import re
 import os
 from tempfile import gettempdir
 from mastodon import Mastodon
-from mastodon_bot.util import filter_words, remove_word, split_string_by_words, convo_first_status_id, download_remote_file, save_local_file, detect_code_in_markdown, extract_uris, open_local_file_as_bytes
+from mastodon_bot.util import filter_words, remove_word, split_string_by_words, convo_first_status_id, download_remote_file, save_local_file, detect_code_in_markdown, extract_uris, open_local_file_as_bytes, break_long_string_into_paragraphs
 from mastodon_bot.external import openai
 from mastodon_bot.external.s3 import s3Wrapper
 from mastodon_bot.external.youtube import YouTubeWrapper
@@ -157,8 +157,15 @@ def listener_respond(
     if in_reply_to_id == None:
         in_reply_to_id = status_id
 
-    split_response_content = split_string_by_words(response_content, 500)
+    split_response_content = split_string_by_words(response_content, 496)
+    counter = 1
+    total_posts = len(split_response_content)
     for split_content in split_response_content:
+        if total_posts - counter > 0:
+            split_content -= f".../{counter}"
+        else:
+            split_content -= f" /{counter}"
+            
         toot = mastodon_api.status_post(
             split_content,
             sensitive=False,
@@ -196,7 +203,13 @@ def unroll_response_content(in_reply_to_id, status_id, config, filtered_content,
 
 
 def prepare_content_for_archive(filtered_content, response_content, stylesheet_link):
-    html_response_content = to_html(response_content)
+
+    #break up string into paragraphs first
+    paragraphs = break_long_string_into_paragraphs(long_string=filtered_content, sentences_per_paragraph=4)
+    joined_paragraphs = "\n".join(paragraphs)
+
+    #convert markdown/text to html
+    html_response_content = to_html(joined_paragraphs)
 
     html_full = f'''
                 <!DOCTYPE html>

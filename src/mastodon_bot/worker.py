@@ -6,6 +6,7 @@ import re
 import os
 from tempfile import gettempdir
 from mastodon import Mastodon
+from mastodon.errors import MastodonAPIError
 from mastodon_bot.util import filter_words, remove_word, split_string_by_words, convo_first_status_id, download_remote_file, save_local_file, detect_code_in_markdown, extract_uris, open_local_file_as_bytes, break_long_string_into_paragraphs
 from mastodon_bot.external import openai
 from mastodon_bot.external.s3 import s3Wrapper
@@ -105,6 +106,14 @@ def listener_respond(
 
             response_content += unroll_response_content(
                 in_reply_to_id, status_id, config, filtered_content, response_content)
+            
+        elif len(response_content > 1000):
+            logging.debug(
+                "Long chat response, posting link to unrolled response")
+            response_content += unroll_response_content(
+                in_reply_to_id, status_id, config, filtered_content, response_content)
+            
+            
 
     if config.response_type == ListenerResponseType.OPEN_AI_IMAGE:
         response_content = get_image_response_content(
@@ -173,6 +182,7 @@ def listener_respond(
         else:
             split_content += f" /{counter}"
 
+        
         toot = mastodon_api.status_post(
             split_content,
             sensitive=False,
@@ -324,6 +334,7 @@ def get_speech_response_content(mastodon_api, media_ids, config, filtered_conten
         media_file=open_local_file_as_bytes(temp_file_path),
         file_name=temp_file_name,
         mime_type="mime_type='audio/mp3'",
+        synchronous=True
     )
     media_ids.append(ai_media_post["id"])
 

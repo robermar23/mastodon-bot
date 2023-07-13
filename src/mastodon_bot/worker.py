@@ -131,7 +131,7 @@ def listener_respond(
         if image_url is not None:
             logging.debug(f"Transcribing from uploaded file: {image_url}")
             response_content = get_transcribe_response_content(
-                mastodon_api=mastodon_api
+                mastodon_api=mastodon_api,
                 in_reply_to_id=in_reply_to_id,
                 audio_model=config.chat_model,
                 openai_api_key=config.openai_api_key,
@@ -146,7 +146,7 @@ def listener_respond(
             for uri in uris_to_try:
                 try:
                     transcribed = get_transcribe_response_content(
-                        mastodon_api=mastodon_api
+                        mastodon_api=mastodon_api,
                         in_reply_to_id=in_reply_to_id,
                         audio_model=config.chat_model,
                         openai_api_key=config.openai_api_key,
@@ -356,5 +356,5 @@ def get_speech_response_content(mastodon_api, media_ids, config, filtered_conten
         os.remove(temp_file_path)
 
     response_content = f"Audio Generated from: {filtered_content} \n\n  View unrolled: {s3_url}"
-    
+
     return response_content

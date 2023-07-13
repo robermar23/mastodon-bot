@@ -164,12 +164,12 @@ def listener_respond(
     if in_reply_to_id == None:
         in_reply_to_id = status_id
 
-    split_response_content = split_string_by_words(response_content, 495)
+    split_response_content = split_string_by_words(response_content, 493)
     counter = 1
     total_posts = len(split_response_content)
     for split_content in split_response_content:
-        if total_posts - counter > 0:
-            split_content += f".../{counter}"
+        if (total_posts - counter) > 0:
+            split_content += f" .../{counter}"
         else:
             split_content += f" /{counter}"
 
@@ -181,6 +181,7 @@ def listener_respond(
             in_reply_to_id=in_reply_to_id,
             media_ids=media_ids,
         )
+        counter += 1
         logging.debug(toot["url"])
         time.sleep(0.5)
 
@@ -205,6 +206,7 @@ def unroll_response_content(in_reply_to_id, status_id, config, filtered_content,
     s3_url = s3.upload_string_to_s3(html_full, s3_file_name)
 
     logging.debug(f"prefixing response with unrolled file {s3_url}")
+
 
     return f"\n\n  View unrolled: {s3_url}"
 

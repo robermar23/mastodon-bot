@@ -116,9 +116,14 @@ def listener_respond(
         )
 
     if config.response_type == ListenerResponseType.OPEN_AI_TRANSCRIBE:
+        if in_reply_to_id == None:
+            in_reply_to_id = status_id
+
         if image_url is not None:
             logging.debug(f"Transcribing from uploaded file: {image_url}")
             response_content = get_transcribe_response_content(
+                mastodon_api=mastodon_api
+                in_reply_to_id=in_reply_to_id,
                 audio_model=config.chat_model,
                 openai_api_key=config.openai_api_key,
                 audio_url=image_url
@@ -132,6 +137,8 @@ def listener_respond(
             for uri in uris_to_try:
                 try:
                     transcribed = get_transcribe_response_content(
+                        mastodon_api=mastodon_api
+                        in_reply_to_id=in_reply_to_id,
                         audio_model=config.chat_model,
                         openai_api_key=config.openai_api_key,
                         audio_url=uri
@@ -228,7 +235,7 @@ def prepare_content_for_archive(filtered_content, response_content, stylesheet_l
     return html_full
 
 
-def get_transcribe_response_content(openai_api_key, audio_url, audio_model):
+def get_transcribe_response_content(mastodon_api, openai_api_key, in_reply_to_id, audio_url, audio_model):
 
     transcribe_ai = openai.OpenAiTranscribe(
         openai_api_key=openai_api_key, model=audio_model)
@@ -236,6 +243,14 @@ def get_transcribe_response_content(openai_api_key, audio_url, audio_model):
     temp_file_path = ""
 
     if audio_url and len(audio_url) > 0:
+        mastodon_api.status_post(
+            "Please wait while I transcribe your audio.  On average, this will take fifty percent of the total time of the audio posted.",
+            sensitive=False,
+            visibility="private",
+            spoiler_text=None,
+            in_reply_to_id=in_reply_to_id,
+            media_ids=[],
+        )
 
         # does audio_url contain youtube link?
         youtube_link_regex = r"https://www.youtube.com/watch\?v="
@@ -301,7 +316,7 @@ def get_speech_response_content(mastodon_api, media_ids, config, filtered_conten
     polly_wrapper.speak(text=filtered_content,
                         voice_id=config.aws_polly_voice_id, out_file=temp_file_path)
 
-    logging.debug(f"posting media to mastoton with name {temp_file_name}")
+    logging.debug(f"posting media to mastodon with name {temp_file_name}")
 
     ai_media_post = mastodon_api.media_post(
         media_file=open_local_file_as_bytes(temp_file_path),

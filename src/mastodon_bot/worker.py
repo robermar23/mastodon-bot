@@ -163,13 +163,17 @@ def listener_respond(
                 in_reply_to_id, status_id, config, filtered_content, response_content)
 
     if config.response_type == ListenerResponseType.TEXT_TO_SPEECH:
+        if in_reply_to_id == None:
+            in_reply_to_id = status_id
         response_content = get_speech_response_content(mastodon_api=mastodon_api,
                                                        media_ids=media_ids,
                                                        config=config,
-                                                       filtered_content=filtered_content)
+                                                       filtered_content=filtered_content,
+                                                       in_reply_to_id=in_reply_to_id)
 
     logging.debug(f"status_post: {response_content}")
 
+    #last chance to make sure we reply to correct convo
     if in_reply_to_id == None:
         in_reply_to_id = status_id
 
@@ -318,7 +322,7 @@ def get_image_response_content(mastodon_api, openai_api_key, image_url, filtered
     return response_content
 
 
-def get_speech_response_content(mastodon_api, media_ids, config, filtered_content):
+def get_speech_response_content(mastodon_api, media_ids, config, filtered_content, in_reply_to_id):
     polly_wrapper = PollyWrapper(access_key_id=config.mastodon_s3_access_key_id, 
                                  access_secret_key=config.mastodon_s3_access_secret_key,
                                  regionName=config.aws_polly_region_name)
@@ -338,9 +342,19 @@ def get_speech_response_content(mastodon_api, media_ids, config, filtered_conten
     )
     media_ids.append(ai_media_post["id"])
 
+    #also post to s3:
+    s3 = s3Wrapper(access_key_id=config.mastodon_s3_access_key_id,
+                   access_secret_key=config.mastodon_s3_access_secret_key,
+                   bucket_name=config.mastodon_s3_bucket_name,
+                   prefix_path=config.mastodon_s3_bucket_prefix_path)
+
+    s3_key = f"{in_reply_to_id}.mp3"
+    s3_url = s3.upload_file_to_s3(file_path=temp_file_path, s3_key=s3_key, content_type="audio/mp3")
+
     # we now need to delete the temp file path if it exists
     if os.path.exists(temp_file_path):
         os.remove(temp_file_path)
 
-    response_content = f"Audio Generated from: {filtered_content}"
+    response_content = f"Audio Generated from: {filtered_content} \n\n  View unrolled: {s3_url}"
+    
     return response_content

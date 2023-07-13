@@ -8,19 +8,26 @@ from tempfile import gettempdir
 
 defaultRegion = "us-east-1"
 defaultUrl = f"https://polly.{defaultRegion}.amazonaws.com"
+defaultProfile = ""
 
 
 class PollyWrapper:
-    def __init__(self, access_key_id: str, access_secret_key: str, regionName: str = defaultRegion, endpointUrl: str = defaultUrl):
+    def __init__(self, access_key_id: str, access_secret_key: str, regionName: str = defaultRegion, endpointUrl: str = defaultUrl, profile_name: str = defaultProfile):
 
-        session = boto3.Session(
-            aws_access_key_id=access_key_id,
-            aws_secret_access_key=access_secret_key
-        )
+        boto3.set_stream_logger(name='botocore.credentials', level=logging.WARNING)
+        boto3.set_stream_logger(name='urllib3.connectionpool', level=logging.WARNING)
+        
+        if profile_name == "":
+            session = boto3.Session(
+                aws_access_key_id=access_key_id,
+                aws_secret_access_key=access_secret_key
+            )
+        else:
+            session = boto3.Session(profile_name=profile_name)
 
         self.polly = session.client(
             'polly', region_name=regionName, endpoint_url=endpointUrl)
-
+    
     def speak(self, text: str, out_file: str, format: str = 'mp3', voice_id: str = 'Brian'):
         try:
             # Request speech synthesis
@@ -55,4 +62,5 @@ class PollyWrapper:
             raise e
 
     def get_voices(self):
-        return self.polly.describe_voices()
+        result = self.polly.describe_voices()
+        return result["Voices"]

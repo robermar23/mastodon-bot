@@ -107,13 +107,11 @@ def listener_respond(
             response_content += unroll_response_content(
                 in_reply_to_id, status_id, config, filtered_content, response_content)
             
-        elif len(response_content > 1000):
+        elif len(response_content) > 1000:
             logging.debug(
                 "Long chat response, posting link to unrolled response")
             response_content += unroll_response_content(
                 in_reply_to_id, status_id, config, filtered_content, response_content)
-            
-            
 
     if config.response_type == ListenerResponseType.OPEN_AI_IMAGE:
         response_content = get_image_response_content(
@@ -165,11 +163,35 @@ def listener_respond(
     if config.response_type == ListenerResponseType.TEXT_TO_SPEECH:
         if in_reply_to_id == None:
             in_reply_to_id = status_id
-        response_content = get_speech_response_content(mastodon_api=mastodon_api,
-                                                       media_ids=media_ids,
-                                                       config=config,
-                                                       filtered_content=filtered_content,
-                                                       in_reply_to_id=in_reply_to_id)
+
+        uris_to_try = extract_uris(content=filtered_content)
+        if (len(uris_to_try)) > 0:
+            for uri in uris_to_try:
+                try:
+                    #allow all types of content-types we can parse for text
+                    allow_file_types = ["txt/html", "txt/plain", "txt/xml", "txt/css", "txt/javascript", "txt/csv", "txt/json", "txt/yaml", "txt/markdown"]
+                    file_bytes, file_extension = download_remote_file(uri, allow_content_types=allow_file_types)
+
+
+                    temp_file_path = f"{gettempdir()}/speech_{str(uuid.uuid4())}.{file_extension}"
+                    save_local_file(content=file_bytes, filename=temp_file_path)
+
+                    #if file_extension == "txt":
+
+                    speech_content = get_speech_response_content(mastodon_api=mastodon_api,
+                                                        media_ids=media_ids,
+                                                        config=config,
+                                                        filtered_content=filtered_content,
+                                                        in_reply_to_id=in_reply_to_id)
+                    response_content += f"{uri}: \n\n {speech_content}\n\n"
+                except Exception as e:
+                    logging.debug(f"Error trying to transcribe {uri}: {e}")
+        else:
+            response_content = get_speech_response_content(mastodon_api=mastodon_api,
+                                                        media_ids=media_ids,
+                                                        config=config,
+                                                        filtered_content=filtered_content,
+                                                        in_reply_to_id=in_reply_to_id)
 
     logging.debug(f"status_post: {response_content}")
 

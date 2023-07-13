@@ -157,15 +157,15 @@ def listener_respond(
     if in_reply_to_id == None:
         in_reply_to_id = status_id
 
-    split_response_content = split_string_by_words(response_content, 496)
+    split_response_content = split_string_by_words(response_content, 495)
     counter = 1
     total_posts = len(split_response_content)
     for split_content in split_response_content:
         if total_posts - counter > 0:
-            split_content -= f".../{counter}"
+            split_content += f".../{counter}"
         else:
-            split_content -= f" /{counter}"
-            
+            split_content += f" /{counter}"
+
         toot = mastodon_api.status_post(
             split_content,
             sensitive=False,

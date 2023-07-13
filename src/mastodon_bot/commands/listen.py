@@ -196,6 +196,8 @@ class Listener(mastodon.StreamListener):
 @click.argument("mastodon_s3_bucket_prefix_path", required=False, type=click.STRING)
 @click.argument("mastodon_s3_access_key_id", required=False, type=click.STRING)
 @click.argument("mastodon_s3_access_secret_key", required=False, type=click.STRING)
+@click.argument("aws_polly_region_name", required=False, type=click.STRING)
+@click.argument("aws_polly_voice_id", required=False, type=click.STRING)
 def listen(
     ctx,
     mastodon_host,
@@ -220,7 +222,9 @@ def listen(
     mastodon_s3_bucket_name,
     mastodon_s3_bucket_prefix_path,
     mastodon_s3_access_key_id,
-    mastodon_s3_access_secret_key
+    mastodon_s3_access_secret_key,
+    aws_polly_region_name,
+    aws_polly_voice_id
 ):
     """
     Listen to Mastodon User streaming events and act
@@ -271,7 +275,11 @@ def listen(
 
     MASTODON_S3__ACCESS_SECRET_KEY: The iam user secret key to use to interact with the defined s3 bucket
 
+    AWS_POLLY_REGION_NAME: The aws region to use to interact with the aws polly service.
+    
+    AWS_POLLY_VOICE_ID: The voice id to use to create audio files from text
 
+    
     """
 
     logging.debug(f"mastodon_host: {mastodon_host}")
@@ -298,7 +306,8 @@ def listen(
     logging.debug(f"mastodon_s3_bucket_prefix_path: {mastodon_s3_bucket_prefix_path}")
     logging.debug(f"mastodon_s3_access_key_id: {mastodon_s3_access_key_id}")
     logging.debug(f"mastodon_s3_access_secret_key: {mastodon_s3_access_secret_key}")
-
+    logging.debug(f"aws_polly_region_name: {aws_polly_region_name}")
+    logging.debug(f"aws_polly_voice_id: {aws_polly_voice_id}")
 
     mastodon_api = Mastodon(
         client_id=mastodon_client_id,
@@ -335,7 +344,9 @@ def listen(
                 mastodon_s3_bucket_name=mastodon_s3_bucket_name,
                 mastodon_s3_bucket_prefix_path=mastodon_s3_bucket_prefix_path,
                 mastodon_s3_access_key_id=mastodon_s3_access_key_id,
-                mastodon_s3_access_secret_key=mastodon_s3_access_secret_key
+                mastodon_s3_access_secret_key=mastodon_s3_access_secret_key,
+                aws_polly_region_name=aws_polly_region_name,
+                aws_polly_voice_id=aws_polly_voice_id
             )
         )
 

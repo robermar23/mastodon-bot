@@ -5,7 +5,7 @@ import click
 import logging
 import atexit
 
-from mastodon_bot.commands import init, post, listen
+from mastodon_bot.commands import init, post, listen, get
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -35,6 +35,7 @@ def exit_handler():
 cli.add_command(init)
 cli.add_command(post)
 cli.add_command(listen)
+cli.add_command(get)
 
 atexit.register(exit_handler)
 

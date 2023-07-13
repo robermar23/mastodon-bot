@@ -148,6 +148,11 @@ def save_local_file(content, filename):
     with open(filename, 'wb') as f:
         f.write(content)
 
+def open_local_file_as_bytes(file_path):
+    with open(file_path, "rb") as file:
+        file_bytes = file.read()
+    return file_bytes
+
 def extract_uris(content: str) -> list[any]:
     logging.debug(f"extracting URIs: {content}")
     # regular expression pattern for full URIs

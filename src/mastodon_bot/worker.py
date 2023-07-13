@@ -228,7 +228,7 @@ def unroll_response_content(in_reply_to_id, status_id, config, filtered_content,
 def prepare_content_for_archive(filtered_content, response_content, stylesheet_link):
 
     #break up string into paragraphs first
-    paragraphs = break_long_string_into_paragraphs(long_string=filtered_content, sentences_per_paragraph=4)
+    paragraphs = break_long_string_into_paragraphs(long_string=response_content, sentences_per_paragraph=4)
     joined_paragraphs = "\n".join(paragraphs)
 
     #convert markdown/text to html

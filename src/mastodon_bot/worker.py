@@ -5,16 +5,17 @@ import uuid
 import re
 import os
 from tempfile import gettempdir
+from bs4 import BeautifulSoup
 from mastodon import Mastodon
 from mastodon.errors import MastodonAPIError
-from mastodon_bot.util import filter_words, remove_word, split_string_by_words, convo_first_status_id, download_remote_file, save_local_file, detect_code_in_markdown, extract_uris, open_local_file_as_bytes, break_long_string_into_paragraphs
+from mastodon_bot.util import filter_words, remove_word, split_string_by_words, convo_first_status_id, download_remote_file, save_local_file, detect_code_in_markdown, extract_uris, open_local_file_as_bytes, break_long_string_into_paragraphs, open_local_file_as_string
 from mastodon_bot.external import openai
 from mastodon_bot.external.s3 import s3Wrapper
 from mastodon_bot.external.youtube import YouTubeWrapper
 from mastodon_bot.external.polly import PollyWrapper
 from mastodon_bot.lib.listen.listener_config import ListenerConfig
 from mastodon_bot.lib.listen.listener_response_type import ListenerResponseType
-from mastodon_bot.markdown import to_html
+from mastodon_bot.markdown import to_html, to_text
 
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
@@ -105,13 +106,13 @@ def listener_respond(
                 "Detected code in chat response, posting link to code file")
 
             response_content += unroll_response_content(
-                in_reply_to_id, status_id, config, filtered_content, response_content)
-            
+                in_reply_to_id, status_id, config, filtered_content, response_content, False)
+
         elif len(response_content) > 1000:
             logging.debug(
                 "Long chat response, posting link to unrolled response")
             response_content += unroll_response_content(
-                in_reply_to_id, status_id, config, filtered_content, response_content)
+                in_reply_to_id, status_id, config, filtered_content, response_content, True)
 
     if config.response_type == ListenerResponseType.OPEN_AI_IMAGE:
         response_content = get_image_response_content(
@@ -152,50 +153,24 @@ def listener_respond(
                     )
                     response_content += f"{uri}: \n\n {transcribed}\n\n"
                 except Exception as e:
-                    logging.debug(f"Error trying to transcribe {uri}: {e}")
+                    logging.error(f"Error trying to transcribe {uri}: {e}")
 
         if len(response_content) > 1000:
             logging.debug(
                 f"Response content is long, posting link to transcription file")
             response_content += unroll_response_content(
-                in_reply_to_id, status_id, config, filtered_content, response_content)
+                in_reply_to_id, status_id, config, filtered_content, response_content, True)
 
     if config.response_type == ListenerResponseType.TEXT_TO_SPEECH:
         if in_reply_to_id == None:
             in_reply_to_id = status_id
 
-        uris_to_try = extract_uris(content=filtered_content)
-        if (len(uris_to_try)) > 0:
-            for uri in uris_to_try:
-                try:
-                    #allow all types of content-types we can parse for text
-                    allow_file_types = ["txt/html", "txt/plain", "txt/xml", "txt/css", "txt/javascript", "txt/csv", "txt/json", "txt/yaml", "txt/markdown"]
-                    file_bytes, file_extension = download_remote_file(uri, allow_content_types=allow_file_types)
-
-
-                    temp_file_path = f"{gettempdir()}/speech_{str(uuid.uuid4())}.{file_extension}"
-                    save_local_file(content=file_bytes, filename=temp_file_path)
-
-                    #if file_extension == "txt":
-
-                    speech_content = get_speech_response_content(mastodon_api=mastodon_api,
-                                                        media_ids=media_ids,
-                                                        config=config,
-                                                        filtered_content=filtered_content,
-                                                        in_reply_to_id=in_reply_to_id)
-                    response_content += f"{uri}: \n\n {speech_content}\n\n"
-                except Exception as e:
-                    logging.debug(f"Error trying to transcribe {uri}: {e}")
-        else:
-            response_content = get_speech_response_content(mastodon_api=mastodon_api,
-                                                        media_ids=media_ids,
-                                                        config=config,
-                                                        filtered_content=filtered_content,
-                                                        in_reply_to_id=in_reply_to_id)
+        response_content = prepare_text_to_speech_content(
+            in_reply_to_id, config, filtered_content, response_content, media_ids, mastodon_api)
 
     logging.debug(f"status_post: {response_content}")
 
-    #last chance to make sure we reply to correct convo
+    # last chance to make sure we reply to correct convo
     if in_reply_to_id == None:
         in_reply_to_id = status_id
 
@@ -208,7 +183,6 @@ def listener_respond(
         else:
             split_content += f" /{counter}"
 
-        
         toot = mastodon_api.status_post(
             split_content,
             sensitive=False,
@@ -225,10 +199,77 @@ def listener_respond(
     return response_content
 
 
-def unroll_response_content(in_reply_to_id, status_id, config, filtered_content, response_content):
+def prepare_text_to_speech_content(in_reply_to_id, config, filtered_content, response_content, media_ids, mastodon_api):
+
+    if response_content is None:
+        response_content = ""
+
+    uris_to_try = extract_uris(content=filtered_content)
+    if (len(uris_to_try)) > 0:
+        for uri in uris_to_try:
+            try:
+                # allow all types of content-types we can parse for text
+                allow_file_types = ["text/html", "text/plain", "text/csv", "text/markdown"]
+                file_bytes, file_extension = download_remote_file(
+                    uri, allow_content_types=allow_file_types)
+
+                temp_file_path = f"{gettempdir()}/speech_{str(uuid.uuid4())}{file_extension}"
+                save_local_file(content=file_bytes, filename=temp_file_path)
+
+                if file_extension == ".txt":
+                    logging.debug("Extracting content from txt file")
+                    uri_content = open_local_file_as_string(temp_file_path)
+                    speech_content = get_speech_response_content(mastodon_api=mastodon_api,
+                                                                 media_ids=media_ids,
+                                                                 config=config,
+                                                                 filtered_content=uri_content,
+                                                                 in_reply_to_id=in_reply_to_id)
+                    response_content += f"\n\n{speech_content}\n\n"
+                elif file_extension in [".html", ".htm"]:
+                    logging.debug("Extracting content from html file")
+                    uri_html = open_local_file_as_string(temp_file_path)
+                    uri_txt = BeautifulSoup(uri_html, "html.parser").text
+                    speech_content = get_speech_response_content(mastodon_api=mastodon_api,
+                                                                 media_ids=media_ids,
+                                                                 config=config,
+                                                                 filtered_content=uri_txt,
+                                                                 in_reply_to_id=in_reply_to_id)
+                    response_content += f"\n\n{speech_content}\n\n"
+
+                elif file_extension == ".md":
+                    logging.debug("Extracting content from markdown file")
+                    uri_md = open_local_file_as_string(temp_file_path)
+                    uri_txt = to_text(markdown_text=uri_md)
+                    speech_content = get_speech_response_content(mastodon_api=mastodon_api,
+                                                                 media_ids=media_ids,
+                                                                 config=config,
+                                                                 filtered_content=uri_txt,
+                                                                 in_reply_to_id=in_reply_to_id)
+                    response_content += f"\n\n{speech_content}\n\n"
+
+                elif file_extension == ".csv":
+                    logging.debug("Extracting content from csv file")
+                    raise Exception("csv Not implemented yet")
+
+            except Exception as e:
+                logging.error(f"Error trying to transcribe {uri}: {e}")
+    else:
+        response_content = get_speech_response_content(mastodon_api=mastodon_api,
+                                                       media_ids=media_ids,
+                                                       config=config,
+                                                       filtered_content=filtered_content,
+                                                       in_reply_to_id=in_reply_to_id)
+
+    return response_content
+
+
+def unroll_response_content(in_reply_to_id, status_id, config, filtered_content, response_content, split_into_paragraphs: bool = False):
+
     stylesheet_link = f"https://{config.mastodon_s3_bucket_name}.s3.amazonaws.com/media_attachments/style/unroll.css"
+
     html_full = prepare_content_for_archive(
-        filtered_content=filtered_content, response_content=response_content, stylesheet_link=stylesheet_link)
+        filtered_content=filtered_content, response_content=response_content, stylesheet_link=stylesheet_link, 
+        split_into_paragraphs=split_into_paragraphs)
 
     s3 = s3Wrapper(access_key_id=config.mastodon_s3_access_key_id,
                    access_secret_key=config.mastodon_s3_access_secret_key,
@@ -243,18 +284,21 @@ def unroll_response_content(in_reply_to_id, status_id, config, filtered_content,
 
     logging.debug(f"prefixing response with unrolled file {s3_url}")
 
-
     return f"\n\n  View unrolled: {s3_url}"
 
 
-def prepare_content_for_archive(filtered_content, response_content, stylesheet_link):
+def prepare_content_for_archive(filtered_content, response_content, stylesheet_link, split_into_paragraphs: bool):
 
-    #break up string into paragraphs first
-    paragraphs = break_long_string_into_paragraphs(long_string=response_content, sentences_per_paragraph=4)
-    joined_paragraphs = "\n".join(paragraphs)
+    # break up string into paragraphs first
+    if split_into_paragraphs:
+        paragraphs = break_long_string_into_paragraphs(
+            long_string=response_content, sentences_per_paragraph=4)
+        joined_paragraphs = "\n\n".join(paragraphs)
 
-    #convert markdown/text to html
-    html_response_content = to_html(joined_paragraphs)
+        # convert markdown/text to html
+        html_response_content = to_html(joined_paragraphs)
+    else:
+        html_response_content = to_html(response_content)
 
     html_full = f'''
                 <!DOCTYPE html>
@@ -280,37 +324,43 @@ def get_transcribe_response_content(mastodon_api, openai_api_key, in_reply_to_id
 
     temp_file_path = ""
 
-    if audio_url and len(audio_url) > 0:
-        mastodon_api.status_post(
-            "Please wait while I transcribe your audio.  On average, this will take fifty percent of the total time of the audio posted.",
-            sensitive=False,
-            visibility="private",
-            spoiler_text=None,
-            in_reply_to_id=in_reply_to_id,
-            media_ids=[],
-        )
+    try:
+        if audio_url and len(audio_url) > 0:
+            mastodon_api.status_post(
+                "Please wait while I transcribe your audio.  On average, this will take fifty percent of the total time of the audio posted.",
+                sensitive=False,
+                visibility="private",
+                spoiler_text=None,
+                in_reply_to_id=in_reply_to_id,
+                media_ids=[],
+            )
 
-        # does audio_url contain youtube link?
-        youtube_link_regex = r"https://www.youtube.com/watch\?v="
-        youtube_link_match = re.search(youtube_link_regex, audio_url)
-        if youtube_link_match:
-            temp_file_path = f"{gettempdir()}/audio_{str(uuid.uuid4())}.mp4"
-            wrapper = YouTubeWrapper()
-            wrapper.download_youtube_audio(
-                url=audio_url, filename=temp_file_path)
+            # does audio_url contain youtube link?
+            youtube_link_regex = r"https://www.youtube.com/watch\?v="
+            youtube_link_match = re.search(youtube_link_regex, audio_url)
+            if youtube_link_match:
+                temp_file_path = f"{gettempdir()}/audio_{str(uuid.uuid4())}.mp4"
+                wrapper = YouTubeWrapper()
+                wrapper.download_youtube_audio(
+                    url=audio_url, filename=temp_file_path)
+            else:
+                audio_bytes, file_extension = download_remote_file(
+                    audio_url, allow_content_types=['audio/mp3', 'audio/mpeg', 'video/mp4'])
+                temp_file_path = f"{gettempdir()}/audio_{str(uuid.uuid4())}.{file_extension}"
+                save_local_file(content=audio_bytes, filename=temp_file_path)
         else:
-            audio_bytes, file_extension = download_remote_file(
-                audio_url, allow_content_types=['audio/mp3', 'audio/mpeg', 'video/mp4'])
-            temp_file_path = f"{gettempdir()}/audio_{str(uuid.uuid4())}.{file_extension}"
-            save_local_file(content=audio_bytes, filename=temp_file_path)
-    else:
-        return "No valid audio provided, cannot transcribe"
+            transcribe_result = "No valid audio provided, cannot transcribe"
 
-    transcribe_result = transcribe_ai.create(audio_file=temp_file_path)
+        transcribe_result = transcribe_ai.create(audio_file=temp_file_path)
 
-    # we now need to delete the temp file path if it exists
-    if os.path.exists(temp_file_path):
-        os.remove(temp_file_path)
+    except Exception as e:
+        logging.error(f"Error trying to transcribe {audio_url}: {e}")
+        transcribe_result = f"Error trying to transcribe {audio_url}"
+
+    finally:
+        # we now need to delete the temp file path if it exists
+        if os.path.exists(temp_file_path):
+            os.remove(temp_file_path)
 
     return transcribe_result
 
@@ -345,7 +395,7 @@ def get_image_response_content(mastodon_api, openai_api_key, image_url, filtered
 
 
 def get_speech_response_content(mastodon_api, media_ids, config, filtered_content, in_reply_to_id):
-    polly_wrapper = PollyWrapper(access_key_id=config.mastodon_s3_access_key_id, 
+    polly_wrapper = PollyWrapper(access_key_id=config.mastodon_s3_access_key_id,
                                  access_secret_key=config.mastodon_s3_access_secret_key,
                                  regionName=config.aws_polly_region_name)
 
@@ -356,27 +406,38 @@ def get_speech_response_content(mastodon_api, media_ids, config, filtered_conten
 
     logging.debug(f"posting media to mastodon with name {temp_file_name}")
 
-    ai_media_post = mastodon_api.media_post(
-        media_file=open_local_file_as_bytes(temp_file_path),
-        file_name=temp_file_name,
-        mime_type="mime_type='audio/mp3'",
-        synchronous=True
-    )
-    media_ids.append(ai_media_post["id"])
+    # attempt to post to mastodon with audio file.
+    # if to large, exception will be raised and we then upload to s3 and return link
+    s3_url = None
+    try:
+        ai_media_post = mastodon_api.media_post(
+            media_file=open_local_file_as_bytes(temp_file_path),
+            file_name=temp_file_name,
+            mime_type="mime_type='audio/mp3'",
+            synchronous=True
+        )
+        media_ids.append(ai_media_post["id"])
+    except MastodonAPIError as e:
+        logging.error(f"Exception: {e}")
+        logging.info(f"Uploading to S3 and returning link instead")
+        
+        # also post to s3:
+        s3 = s3Wrapper(access_key_id=config.mastodon_s3_access_key_id,
+                    access_secret_key=config.mastodon_s3_access_secret_key,
+                    bucket_name=config.mastodon_s3_bucket_name,
+                    prefix_path=config.mastodon_s3_bucket_prefix_path)
 
-    #also post to s3:
-    s3 = s3Wrapper(access_key_id=config.mastodon_s3_access_key_id,
-                   access_secret_key=config.mastodon_s3_access_secret_key,
-                   bucket_name=config.mastodon_s3_bucket_name,
-                   prefix_path=config.mastodon_s3_bucket_prefix_path)
+        s3_key = f"{in_reply_to_id}.mp3"
+        s3_url = s3.upload_file_to_s3(
+            file_path=temp_file_path, s3_key=s3_key, content_type="audio/mp3")
+    finally:
+        # we now need to delete the temp file path if it exists
+        if os.path.exists(temp_file_path):
+            os.remove(temp_file_path)
 
-    s3_key = f"{in_reply_to_id}.mp3"
-    s3_url = s3.upload_file_to_s3(file_path=temp_file_path, s3_key=s3_key, content_type="audio/mp3")
-
-    # we now need to delete the temp file path if it exists
-    if os.path.exists(temp_file_path):
-        os.remove(temp_file_path)
-
-    response_content = f"Audio Generated from: {filtered_content} \n\n  View unrolled: {s3_url}"
+    if s3_url is not None:
+        response_content = f"Audio Generated from: {filtered_content} \n\n  View unrolled: {s3_url}"
+    else:
+        response_content = f"Audio Generated from: {filtered_content}"
 
     return response_content

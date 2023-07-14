@@ -6,6 +6,7 @@ import logging
 import base64
 import textwrap
 import re
+import csv
 from urllib.parse import urlparse
 
 def stopwatch(message: str):
@@ -153,6 +154,11 @@ def open_local_file_as_bytes(file_path):
         file_bytes = file.read()
     return file_bytes
 
+def open_local_file_as_string(file_path):
+    with open(file_path, "r") as file:
+        file_string = file.read()
+    return file_string
+
 def extract_uris(content: str) -> list[any]:
     logging.debug(f"extracting URIs: {content}")
     # regular expression pattern for full URIs
@@ -217,6 +223,17 @@ def break_long_string_into_paragraphs(long_string, sentences_per_paragraph):
         paragraphs.append(". ".join(current_paragraph))
 
     return paragraphs
+
+def process_csv_file(file_path):
+    paragraphs = []
+
+    with open(file_path, 'r') as file:
+        reader = csv.reader(file)
+        for row in reader:
+            paragraph = ' '.join(row)  # Combine all columns into a single string
+            paragraphs.append(paragraph)
+
+    return '\n\n'.join(paragraphs)  # Join paragraphs with double line breaks
 
 # def apply_rtf_to_response(markdown_text:str):
 #     # Regular expression pattern to match code blocks in Markdown

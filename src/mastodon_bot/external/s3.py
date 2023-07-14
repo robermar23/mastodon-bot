@@ -40,7 +40,7 @@ class s3Wrapper:
         # use boto3 s3 client to upload file_path to s3_key
         self.s3.upload_file(
             Filename=file_path, Bucket=self.bucket_name,
-            Key=s3_key, ACL='public-read', ContentType=content_type)
+            Key=s3_key, ContentType=content_type, ExtraArgs={'ACL':'public-read'})
 
         # Generate a publicly accessible link
         s3_url = f"https://{self.bucket_name}.s3.amazonaws.com/{s3_key}"

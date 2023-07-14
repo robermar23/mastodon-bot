@@ -7,6 +7,7 @@ import base64
 import textwrap
 import re
 import csv
+import html
 from urllib.parse import urlparse
 
 def stopwatch(message: str):
@@ -234,6 +235,21 @@ def process_csv_file(file_path):
             paragraphs.append(paragraph)
 
     return '\n\n'.join(paragraphs)  # Join paragraphs with double line breaks
+
+def is_valid_uri(uri):
+    regex = re.compile(
+        r'^(?:http|ftp)s?://'  # scheme
+        r'(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+(?:[A-Z]{2,6}\.?|[A-Z0-9-]{2,}\.?)|'  # domain...
+        r'localhost|'  # localhost...
+        r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})'  # ...or IP
+        r'(?::\d+)?'  # optional port
+        r'(?:/?|[/?]\S+)$', re.IGNORECASE)
+    return bool(re.match(regex, uri))
+
+def convert_text_to_html(text):
+    html_text = html.escape(text)
+    html_text = html_text.replace('\n\n', '</br>')
+    return html_text
 
 # def apply_rtf_to_response(markdown_text:str):
 #     # Regular expression pattern to match code blocks in Markdown

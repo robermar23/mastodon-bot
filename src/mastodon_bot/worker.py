@@ -8,14 +8,14 @@ from tempfile import gettempdir
 from bs4 import BeautifulSoup
 from mastodon import Mastodon
 from mastodon.errors import MastodonAPIError
-from mastodon_bot.util import filter_words, remove_word, split_string_by_words, convo_first_status_id, download_remote_file, save_local_file, detect_code_in_markdown, extract_uris, open_local_file_as_bytes, break_long_string_into_paragraphs, open_local_file_as_string
+from mastodon_bot.util import filter_words, remove_word, split_string_by_words, convo_first_status_id, download_remote_file, save_local_file, detect_code_in_markdown, extract_uris, open_local_file_as_bytes, break_long_string_into_paragraphs, open_local_file_as_string, is_valid_uri, convert_text_to_html
 from mastodon_bot.external import openai
 from mastodon_bot.external.s3 import s3Wrapper
 from mastodon_bot.external.youtube import YouTubeWrapper
 from mastodon_bot.external.polly import PollyWrapper
 from mastodon_bot.lib.listen.listener_config import ListenerConfig
 from mastodon_bot.lib.listen.listener_response_type import ListenerResponseType
-from mastodon_bot.markdown import to_html, to_text
+from mastodon_bot.markdown import to_text
 
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
@@ -127,7 +127,8 @@ def listener_respond(
         if in_reply_to_id == None:
             in_reply_to_id = status_id
 
-        if image_url is not None:
+        if image_url is not None and len(image_url) > 0:
+
             logging.debug(f"Transcribing from uploaded file: {image_url}")
             response_content = get_transcribe_response_content(
                 mastodon_api=mastodon_api,
@@ -296,9 +297,10 @@ def prepare_content_for_archive(filtered_content, response_content, stylesheet_l
         joined_paragraphs = "\n\n".join(paragraphs)
 
         # convert markdown/text to html
-        html_response_content = to_html(joined_paragraphs)
+        #html_response_content = to_html(joined_paragraphs)
+        html_response_content = convert_text_to_html(joined_paragraphs)
     else:
-        html_response_content = to_html(response_content)
+        html_response_content = convert_text_to_html(response_content)
 
     html_full = f'''
                 <!DOCTYPE html>
@@ -308,7 +310,6 @@ def prepare_content_for_archive(filtered_content, response_content, stylesheet_l
                     <link rel="stylesheet" type="text/css" href="{stylesheet_link}" />
                 </head>
                 <body>
-                    <p><strong{filtered_content}</strong></p>
                     {html_response_content}
                 </body>
                 </html>
@@ -326,6 +327,11 @@ def get_transcribe_response_content(mastodon_api, openai_api_key, in_reply_to_id
 
     try:
         if audio_url and len(audio_url) > 0:
+
+            if not is_valid_uri(audio_url):
+                raise Exception(
+                    f"Invalid audio url provided: {audio_url}")
+            
             mastodon_api.status_post(
                 "Please wait while I transcribe your audio.  On average, this will take fifty percent of the total time of the audio posted.",
                 sensitive=False,

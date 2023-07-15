@@ -10,7 +10,7 @@ from bs4 import BeautifulSoup
 from rq import Queue, Retry
 from mastodon import Mastodon
 from mastodon.errors import MastodonAPIError
-from mastodon_bot.util import filter_words, remove_word, split_string_by_words, convo_first_status_id, download_remote_file, save_local_file, detect_code_in_markdown, extract_uris, open_local_file_as_bytes, break_long_string_into_paragraphs, open_local_file_as_string, is_valid_uri, convert_text_to_html
+from mastodon_bot.util import filter_words, remove_word, split_string_by_words, convo_first_status_id, download_remote_file, save_local_file, detect_code_in_markdown, extract_uris, open_local_file_as_bytes, break_long_string_into_paragraphs, open_local_file_as_string, is_valid_uri, convert_text_to_html, process_csv_to_dict
 from mastodon_bot.external import openai
 from mastodon_bot.external.s3 import s3Wrapper
 from mastodon_bot.external.youtube import YouTubeWrapper
@@ -213,7 +213,8 @@ def prepare_text_to_speech_content(in_reply_to_id, config, filtered_content, res
         for uri in uris_to_try:
             try:
                 # allow all types of content-types we can parse for text
-                allow_file_types = ["text/html", "text/plain", "text/csv", "text/markdown"]
+                allow_file_types = ["text/html",
+                                    "text/plain", "text/csv", "text/markdown"]
                 file_bytes, file_extension = download_remote_file(
                     uri, allow_content_types=allow_file_types)
 
@@ -227,7 +228,8 @@ def prepare_text_to_speech_content(in_reply_to_id, config, filtered_content, res
                                                                  media_ids=media_ids,
                                                                  config=config,
                                                                  filtered_content=uri_content,
-                                                                 in_reply_to_id=in_reply_to_id)
+                                                                 in_reply_to_id=in_reply_to_id,
+                                                                 voice_id=config.aws_polly_voice_id)
                     response_content += f"\n\n{speech_content}\n\n"
                 elif file_extension in [".html", ".htm"]:
                     logging.debug("Extracting content from html file")
@@ -237,7 +239,8 @@ def prepare_text_to_speech_content(in_reply_to_id, config, filtered_content, res
                                                                  media_ids=media_ids,
                                                                  config=config,
                                                                  filtered_content=uri_txt,
-                                                                 in_reply_to_id=in_reply_to_id)
+                                                                 in_reply_to_id=in_reply_to_id,
+                                                                 voice_id=config.aws_polly_voice_id)
                     response_content += f"\n\n{speech_content}\n\n"
 
                 elif file_extension == ".md":
@@ -248,12 +251,38 @@ def prepare_text_to_speech_content(in_reply_to_id, config, filtered_content, res
                                                                  media_ids=media_ids,
                                                                  config=config,
                                                                  filtered_content=uri_txt,
-                                                                 in_reply_to_id=in_reply_to_id)
+                                                                 in_reply_to_id=in_reply_to_id,
+                                                                 voice_id=config.aws_polly_voice_id)
                     response_content += f"\n\n{speech_content}\n\n"
 
                 elif file_extension == ".csv":
                     logging.debug("Extracting content from csv file")
-                    raise Exception("csv Not implemented yet")
+                    csv_data = process_csv_to_dict(temp_file_path)
+                    for row in csv_data:
+                        row_text_to_use = ""
+                        voice_id_to_use = config.aws_polly_voice_id
+
+                        if "content" in row:
+                            row_text_to_use = row["content"]
+                        elif "text" in row:
+                            row_text_to_use = row["text"]
+                        elif "prompt" in row:
+                            row_text_to_use = row["prompt"]
+                        else:
+                            row_text_to_use = row[0]
+
+                        if "voice_id" in row:
+                            voice_id_to_use = row["voice_id"]
+                        elif "voice" in row:
+                            voice_id_to_use = row["voice"]
+
+                        speech_content = get_speech_response_content(mastodon_api=mastodon_api,
+                                                                     media_ids=media_ids,
+                                                                     config=config,
+                                                                     filtered_content=row_text_to_use,
+                                                                     in_reply_to_id=in_reply_to_id,
+                                                                     voice_id=voice_id_to_use)
+                        response_content += f"\n\n{speech_content}\n\n"
 
             except Exception as e:
                 logging.error(f"Error trying to transcribe {uri}: {e}")
@@ -262,7 +291,8 @@ def prepare_text_to_speech_content(in_reply_to_id, config, filtered_content, res
                                                        media_ids=media_ids,
                                                        config=config,
                                                        filtered_content=filtered_content,
-                                                       in_reply_to_id=in_reply_to_id)
+                                                       in_reply_to_id=in_reply_to_id,
+                                                       voice_id=config.aws_polly_voice_id)
 
     return response_content
 
@@ -272,7 +302,7 @@ def unroll_response_content(in_reply_to_id, status_id, config, filtered_content,
     stylesheet_link = f"https://{config.mastodon_s3_bucket_name}.s3.amazonaws.com/media_attachments/style/unroll.css"
 
     html_full = prepare_content_for_archive(
-        filtered_content=filtered_content, response_content=response_content, stylesheet_link=stylesheet_link, 
+        filtered_content=filtered_content, response_content=response_content, stylesheet_link=stylesheet_link,
         split_into_paragraphs=split_into_paragraphs)
 
     s3 = s3Wrapper(access_key_id=config.mastodon_s3_access_key_id,
@@ -300,7 +330,7 @@ def prepare_content_for_archive(filtered_content, response_content, stylesheet_l
         joined_paragraphs = "\n\n".join(paragraphs)
 
         # convert markdown/text to html
-        #html_response_content = to_html(joined_paragraphs)
+        # html_response_content = to_html(joined_paragraphs)
         html_response_content = convert_text_to_html(joined_paragraphs)
     else:
         html_response_content = convert_text_to_html(response_content)
@@ -334,7 +364,7 @@ def get_transcribe_response_content(mastodon_api, openai_api_key, in_reply_to_id
             if not is_valid_uri(audio_url):
                 raise Exception(
                     f"Invalid audio url provided: {audio_url}")
-            
+
             mastodon_api.status_post(
                 "Please wait while I transcribe your audio.  On average, this will take fifty percent of the total time of the audio posted.",
                 sensitive=False,
@@ -403,22 +433,28 @@ def get_image_response_content(mastodon_api, openai_api_key, image_url, filtered
     return response_content
 
 
-def get_speech_response_content(mastodon_api, media_ids, config, filtered_content, in_reply_to_id):
+def get_speech_response_content(mastodon_api, media_ids, config, filtered_content, in_reply_to_id, voice_id):
+
     polly_wrapper = PollyWrapper(access_key_id=config.mastodon_s3_access_key_id,
                                  access_secret_key=config.mastodon_s3_access_secret_key,
-                                 regionName=config.aws_polly_region_name)
+                                 regionName=config.aws_polly_region_name,)
 
     temp_file_name = f"speech_{str(uuid.uuid4())}.mp3"
     temp_file_path = f"{gettempdir()}/{temp_file_name}"
 
-    
-    speak_direct = polly_wrapper.speak(text=filtered_content,
-                        voice_id=config.aws_polly_voice_id, out_file=temp_file_path)
+    if voice_id is None:
+        voice_id = config.aws_polly_voice_id
+
+    speak_direct = polly_wrapper.speak(
+        text=filtered_content, voice_id=voice_id, out_file=temp_file_path)
     if speak_direct is False:
+        logging.debug(
+            f"enqueing polly task due to large text {temp_file_name}")
         task_s3_key = f"polly_task_{in_reply_to_id}.mp3"
         polly_task_id = polly_wrapper.start_speak(text=filtered_content, voice_id=config.aws_polly_voice_id,
-                                  output_bucket=config.mastodon_s3_bucket_name, output_key=task_s3_key)
-        logging.info(f"enqueuing polly status job: {polly_task_id} {in_reply_to_id}")
+                                                  output_bucket=config.mastodon_s3_bucket_name, output_key=task_s3_key)
+        logging.info(
+            f"enqueuing polly status job: {polly_task_id} {in_reply_to_id}")
         redis_conn = redis.from_url(config.rq_redis_connection)
         queue = Queue(config.rq_queue_name, connection=redis_conn)
         queue.enqueue(
@@ -430,10 +466,11 @@ def get_speech_response_content(mastodon_api, media_ids, config, filtered_conten
                 'config': config
             },
             # we retry up to one hour for these async jobs
-            retry=Retry(max=60, 
-                        interval=60), #in seconds
+            retry=Retry(max=60,
+                        interval=60),  # in seconds
             job_timeout=config.rq_queue_task_timeout
         )
+        response_content = f"AWS Polly task enqueued, please wait..."
     else:
         logging.debug(f"posting media to mastodon with name {temp_file_name}")
 
@@ -451,12 +488,12 @@ def get_speech_response_content(mastodon_api, media_ids, config, filtered_conten
         except MastodonAPIError as e:
             logging.error(f"Exception: {e}")
             logging.info(f"Uploading to S3 and returning link instead")
-            
+
             # also post to s3:
             s3 = s3Wrapper(access_key_id=config.mastodon_s3_access_key_id,
-                        access_secret_key=config.mastodon_s3_access_secret_key,
-                        bucket_name=config.mastodon_s3_bucket_name,
-                        prefix_path=config.mastodon_s3_bucket_prefix_path)
+                           access_secret_key=config.mastodon_s3_access_secret_key,
+                           bucket_name=config.mastodon_s3_bucket_name,
+                           prefix_path=config.mastodon_s3_bucket_prefix_path)
 
             s3_key = f"{in_reply_to_id}.mp3"
             s3_url = s3.upload_file_to_s3(

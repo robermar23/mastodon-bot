@@ -225,16 +225,14 @@ def break_long_string_into_paragraphs(long_string, sentences_per_paragraph):
 
     return paragraphs
 
-def process_csv_file(file_path):
-    paragraphs = []
-
-    with open(file_path, 'r') as file:
-        reader = csv.reader(file)
+def process_csv_to_dict(file_path: str) -> list:
+    results = []
+    
+    with open(file_path, 'r') as csv_file:
+        reader = csv.DictReader(csv_file)
         for row in reader:
-            paragraph = ' '.join(row)  # Combine all columns into a single string
-            paragraphs.append(paragraph)
-
-    return '\n\n'.join(paragraphs)  # Join paragraphs with double line breaks
+            results.append(dict(row))
+    return results
 
 def is_valid_uri(uri):
     regex = re.compile(

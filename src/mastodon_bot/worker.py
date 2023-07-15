@@ -450,9 +450,8 @@ def get_speech_response_content(mastodon_api, media_ids, config, filtered_conten
     if speak_direct is False:
         logging.debug(
             f"enqueing polly task due to large text {temp_file_name}")
-        task_s3_key = f"polly_task_{in_reply_to_id}.mp3"
         polly_task_id = polly_wrapper.start_speak(text=filtered_content, voice_id=config.aws_polly_voice_id,
-                                                  output_bucket=config.mastodon_s3_bucket_name, output_key=task_s3_key)
+                                                  output_bucket=config.mastodon_s3_bucket_name, output_key_prefix=config.mastodon_s3_bucket_prefix_path)
         logging.info(
             f"enqueuing polly status job: {polly_task_id} {in_reply_to_id}")
         redis_conn = redis.from_url(config.rq_redis_connection)
@@ -460,7 +459,6 @@ def get_speech_response_content(mastodon_api, media_ids, config, filtered_conten
         queue.enqueue(
             polly_status_job,
             kwargs={
-                'task_s3_key': task_s3_key,
                 'in_reply_to_id': in_reply_to_id,
                 'polly_task_id': polly_task_id,
                 'config': config

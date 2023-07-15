@@ -8,7 +8,7 @@ logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
 
 
-def polly_status_job(task_s3_key: str, in_reply_to_id: str, polly_task_id: str, config: ListenerConfig):
+def polly_status_job(in_reply_to_id: str, polly_task_id: str, config: ListenerConfig):
     if config == None:
         raise ValueError("ListenerConfig cannot be None")
 
@@ -22,6 +22,7 @@ def polly_status_job(task_s3_key: str, in_reply_to_id: str, polly_task_id: str, 
                         access_secret_key=config.mastodon_s3_access_secret_key, bucket_name=config.mastodon_s3_bucket_name,
                         prefix_path=config.mastodon_s3_bucket_prefix_path)
 
+    task_s3_key = f".{polly_task_id}.mp3"
     try_file = wrapper.get_file(task_s3_key)
 
     if try_file == None:

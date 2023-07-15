@@ -4,8 +4,10 @@ import logging
 import uuid
 import re
 import os
+import redis
 from tempfile import gettempdir
 from bs4 import BeautifulSoup
+from rq import Queue, Retry
 from mastodon import Mastodon
 from mastodon.errors import MastodonAPIError
 from mastodon_bot.util import filter_words, remove_word, split_string_by_words, convo_first_status_id, download_remote_file, save_local_file, detect_code_in_markdown, extract_uris, open_local_file_as_bytes, break_long_string_into_paragraphs, open_local_file_as_string, is_valid_uri, convert_text_to_html
@@ -15,6 +17,7 @@ from mastodon_bot.external.youtube import YouTubeWrapper
 from mastodon_bot.external.polly import PollyWrapper
 from mastodon_bot.lib.listen.listener_config import ListenerConfig
 from mastodon_bot.lib.listen.listener_response_type import ListenerResponseType
+from mastodon_bot.lib.rq.polly_task_status import polly_status_job
 from mastodon_bot.markdown import to_text
 
 logging.basicConfig(level=logging.INFO,
@@ -407,43 +410,65 @@ def get_speech_response_content(mastodon_api, media_ids, config, filtered_conten
 
     temp_file_name = f"speech_{str(uuid.uuid4())}.mp3"
     temp_file_path = f"{gettempdir()}/{temp_file_name}"
-    polly_wrapper.speak(text=filtered_content,
+
+    
+    speak_direct = polly_wrapper.speak(text=filtered_content,
                         voice_id=config.aws_polly_voice_id, out_file=temp_file_path)
-
-    logging.debug(f"posting media to mastodon with name {temp_file_name}")
-
-    # attempt to post to mastodon with audio file.
-    # if to large, exception will be raised and we then upload to s3 and return link
-    s3_url = None
-    try:
-        ai_media_post = mastodon_api.media_post(
-            media_file=open_local_file_as_bytes(temp_file_path),
-            file_name=temp_file_name,
-            mime_type="mime_type='audio/mp3'",
-            synchronous=True
+    if speak_direct is False:
+        task_s3_key = f"polly_task_{in_reply_to_id}.mp3"
+        polly_task_id = polly_wrapper.start_speak(text=filtered_content, voice_id=config.aws_polly_voice_id,
+                                  output_bucket=config.mastodon_s3_bucket_name, output_key=task_s3_key)
+        logging.info(f"enqueuing polly status job: {polly_task_id} {in_reply_to_id}")
+        redis_conn = redis.from_url(config.rq_redis_connection)
+        queue = Queue(config.rq_queue_name, connection=redis_conn)
+        queue.enqueue(
+            polly_status_job,
+            kwargs={
+                'task_s3_key': task_s3_key,
+                'in_reply_to_id': in_reply_to_id,
+                'polly_task_id': polly_task_id,
+                'config': config
+            },
+            # we retry up to one hour for these async jobs
+            retry=Retry(max=60, 
+                        interval=60), #in seconds
+            job_timeout=config.rq_queue_task_timeout
         )
-        media_ids.append(ai_media_post["id"])
-    except MastodonAPIError as e:
-        logging.error(f"Exception: {e}")
-        logging.info(f"Uploading to S3 and returning link instead")
-        
-        # also post to s3:
-        s3 = s3Wrapper(access_key_id=config.mastodon_s3_access_key_id,
-                    access_secret_key=config.mastodon_s3_access_secret_key,
-                    bucket_name=config.mastodon_s3_bucket_name,
-                    prefix_path=config.mastodon_s3_bucket_prefix_path)
-
-        s3_key = f"{in_reply_to_id}.mp3"
-        s3_url = s3.upload_file_to_s3(
-            file_path=temp_file_path, s3_key=s3_key, content_type="audio/mp3")
-    finally:
-        # we now need to delete the temp file path if it exists
-        if os.path.exists(temp_file_path):
-            os.remove(temp_file_path)
-
-    if s3_url is not None:
-        response_content = f"Audio Generated from: {filtered_content} \n\n  View unrolled: {s3_url}"
     else:
-        response_content = f"Audio Generated from: {filtered_content}"
+        logging.debug(f"posting media to mastodon with name {temp_file_name}")
+
+        # attempt to post to mastodon with audio file.
+        # if to large, exception will be raised and we then upload to s3 and return link
+        s3_url = None
+        try:
+            ai_media_post = mastodon_api.media_post(
+                media_file=open_local_file_as_bytes(temp_file_path),
+                file_name=temp_file_name,
+                mime_type="mime_type='audio/mp3'",
+                synchronous=True
+            )
+            media_ids.append(ai_media_post["id"])
+        except MastodonAPIError as e:
+            logging.error(f"Exception: {e}")
+            logging.info(f"Uploading to S3 and returning link instead")
+            
+            # also post to s3:
+            s3 = s3Wrapper(access_key_id=config.mastodon_s3_access_key_id,
+                        access_secret_key=config.mastodon_s3_access_secret_key,
+                        bucket_name=config.mastodon_s3_bucket_name,
+                        prefix_path=config.mastodon_s3_bucket_prefix_path)
+
+            s3_key = f"{in_reply_to_id}.mp3"
+            s3_url = s3.upload_file_to_s3(
+                file_path=temp_file_path, s3_key=s3_key, content_type="audio/mp3")
+        finally:
+            # we now need to delete the temp file path if it exists
+            if os.path.exists(temp_file_path):
+                os.remove(temp_file_path)
+
+        if s3_url is not None:
+            response_content = f"Audio Generated from: {filtered_content} \n\n  View unrolled: {s3_url}"
+        else:
+            response_content = f"Audio Generated from: {filtered_content}"
 
     return response_content

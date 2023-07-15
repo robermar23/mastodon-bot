@@ -1,4 +1,5 @@
 import boto3
+import io
 
 
 class s3Wrapper:
@@ -46,3 +47,21 @@ class s3Wrapper:
         s3_url = f"https://{self.bucket_name}.s3.amazonaws.com/{s3_key}"
 
         return s3_url
+    
+    def get_file(self, s3_key: str) -> bytes:
+        if self.prefix_path:
+            s3_key = f"{self.prefix_path}{s3_key}"
+        
+        bytes_buffer = io.BytesIO()
+        self.s3.download_fileobj(Bucket=self.bucket_name, Key=s3_key, Fileobj=bytes_buffer)
+        return bytes_buffer.getvalue()
+
+    def get_file_as_string(self, s3_key: str) -> str:        
+        byte_value = self.get_file(s3_key=s3_key)
+        return byte_value.decode() #python3, default decoding is utf-8
+
+    def get_public_url(self, s3_key: str) -> str:
+        if self.prefix_path:
+            s3_key = f"{self.prefix_path}{s3_key}"
+        
+        return f"https://{self.bucket_name}.s3.amazonaws.com/{s3_key}"

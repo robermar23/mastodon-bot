@@ -2,6 +2,7 @@ import os
 import logging
 import boto3
 from botocore.exceptions import BotoCoreError, ClientError
+from botocore.exceptions import ClientError
 from contextlib import closing
 from tempfile import gettempdir
 
@@ -28,6 +29,37 @@ class PollyWrapper:
         self.polly = session.client(
             'polly', region_name=regionName, endpoint_url=endpointUrl)
     
+
+    def start_speak(self, text: str, output_bucket: str, output_key_prefix: str, format: str = 'mp3', voice_id: str = 'Brian'):
+
+        task_id = None
+
+        try:
+            
+            # Specify the voice and other synthesis parameters
+            language_code = 'en-US'
+
+            # Start the speech synthesis task
+            response = self.polly.start_speech_synthesis_task(
+                OutputFormat=format,
+                OutputS3BucketName=output_bucket,
+                OutputS3KeyPrefix=output_key_prefix,
+                Text=text,
+                VoiceId=voice_id,
+                LanguageCode=language_code
+            )
+
+            # Retrieve the task ID for status lookups
+            task_id = response['SynthesisTask']['TaskId']
+
+        except (BotoCoreError, ClientError) as e:
+            # The service returned an error, exit gracefully
+            logging.error(f"aws polly error, {e.error}")
+            raise e
+
+        return task_id
+        
+
     def speak(self, text: str, out_file: str, format: str = 'mp3', voice_id: str = 'Brian'):
         try:
             # Request speech synthesis
@@ -47,16 +79,27 @@ class PollyWrapper:
                       # Open a file for writing the output as a binary stream
                         with open(output, "wb") as file:
                             file.write(stream.read())
+                        
+                        # return true to caller to it knows to use response in outfile
+                        return True
+                    
                     except IOError as error:
                         # Could not write to file, exit gracefully
                         logging.error(f"Could not write to file: {error}")
                         raise error
-
             else:
                 # The response didn't contain audio data, exit gracefully
                 logging.error("Could not stream audio")
 
-        except (BotoCoreError, ClientError) as e:
+        except ClientError as et:
+            logging.error(f"aws polly error, {et.response}")
+            if et.response['Error']['Code'] == 'TextLengthExceededException':
+                # return false so caller knows to try async job method
+                return False
+            else:
+                raise et
+        
+        except (BotoCoreError) as e:
             # The service returned an error, exit gracefully
             logging.error(f"aws polly error, {e.error}")
             raise e

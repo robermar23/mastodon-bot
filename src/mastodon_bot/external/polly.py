@@ -45,6 +45,9 @@ class PollyWrapper:
             if self.is_valid_sml(text):
                 text_type = "ssml"
 
+            # switch to the neural engine if the voice_id supports it
+            engine = self.decide_engine(voice_id)
+
             # Start the speech synthesis task
             response = self.polly.start_speech_synthesis_task(
                 OutputFormat=format,
@@ -53,7 +56,8 @@ class PollyWrapper:
                 Text=text,
                 VoiceId=voice_id,
                 LanguageCode=language_code,
-                TextType=text_type
+                TextType=text_type,
+                Engine=engine
             )
 
             # Retrieve the task ID for status lookups
@@ -72,9 +76,13 @@ class PollyWrapper:
             if self.is_valid_sml(text):
                 text_type = "ssml"
 
+            # switch to the neural engine if the voice_id supports it
+            engine = self.decide_engine(voice_id)
+
             # Request speech synthesis
             response = self.polly.synthesize_speech(
-                Text=text, OutputFormat=format, VoiceId=voice_id, TextType=text_type)
+                Text=text, OutputFormat=format, VoiceId=voice_id, 
+                TextType=text_type, Engine=engine)
 
             # Access the audio stream from the response
             if "AudioStream" in response:
@@ -124,3 +132,13 @@ class PollyWrapper:
             return True
         except ET.ParseError:
             return False
+        
+    def decide_engine(self, voice_id):
+        engine = "standard"
+        all_voices = self.get_voices()
+        for voice in all_voices:
+            if voice['Id'] == voice_id:
+                if "neural" in voice['SupportedEngines']:
+                    engine = "neural"
+                break
+        return engine

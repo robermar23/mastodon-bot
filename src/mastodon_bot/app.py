@@ -5,7 +5,7 @@ import click
 import logging
 import atexit
 
-from mastodon_bot.commands import init, post, listen
+from mastodon_bot.commands import init, post, listen, get
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -13,7 +13,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 @click.option("--debugging",is_flag=True, default=False, help="output debug information")
 @click.pass_context
 def cli(ctx, debugging):
-    click.echo('Debug mode is %s' % ('on' if debugging else 'off'))
+    #click.echo('Debug mode is %s' % ('on' if debugging else 'off'))
     ctx.ensure_object(dict)
 
     if debugging:
@@ -35,6 +35,7 @@ def exit_handler():
 cli.add_command(init)
 cli.add_command(post)
 cli.add_command(listen)
+cli.add_command(get)
 
 atexit.register(exit_handler)
 

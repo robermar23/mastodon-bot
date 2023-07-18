@@ -1119,6 +1119,17 @@ files = [
 ]
 
 [[package]]
+name = "pytube-lanuma"
+version = "15.2.0"
+description = "Python 3 library for downloading YouTube Videos."
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "pytube-lanuma-15.2.0.tar.gz", hash = "sha256:0a6d25232f65e6e31b662d3031ea5d485b508982562f5a574529c0df1e3e4d4c"},
+    {file = "pytube_lanuma-15.2.0-py3-none-any.whl", hash = "sha256:4e71371b48c5d171af4e45b42da13321e8e9f0ad6fedb315bc91b00e13811cd0"},
+]
+
+[[package]]
 name = "redis"
 version = "4.6.0"
 description = "Python client for Redis database and key-value store"
@@ -1534,4 +1545,4 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.9"
-content-hash = "914f77a26cbfef0334cd2206f676fcd41738fe686f4f3e12e6f22ba5b7f0a5ee"
+content-hash = "291ca4ccd5d9792183dd7b07042a7018b051f0b68c308f901b1b3ed40ceffb18"

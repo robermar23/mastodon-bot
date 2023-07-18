@@ -25,10 +25,13 @@ class ListenerConfig:
         self.rq_queue_name = kwargs.get("rq_queue_name", None)
         self.rq_queue_retry_attempts = kwargs.get("rq_queue_retry_attempts", 3)
         self.rq_queue_retry_delay = kwargs.get("rq_queue_retry_delay", 60)
+        self.rq_queue_task_timeout = kwargs.get("rq_queue_task_timeout", 3600)
         self.mastodon_s3_bucket_name = kwargs.get("mastodon_s3_bucket_name", None)
         self.mastodon_s3_bucket_prefix_path = kwargs.get("mastodon_s3_bucket_prefix_path", "/")
         self.mastodon_s3_access_key_id = kwargs.get("mastodon_s3_access_key_id", None)
         self.mastodon_s3_access_secret_key = kwargs.get("mastodon_s3_access_secret_key", None)
+        self.aws_polly_region_name = kwargs.get("aws_polly_region_name", "us-east-1")
+        self.aws_polly_voice_id = kwargs.get("aws_polly_voice_id", "Brian")
 
 
     def get_openai_api_key(self):
@@ -162,3 +165,22 @@ class ListenerConfig:
     
     def set_mastodon_s3_access_secret_key(self, mastodon_s3_access_secret_key):
         self.mastodon_s3_access_secret_key = mastodon_s3_access_secret_key
+    
+    def get_rq_queue_task_timeout(self):
+        return self.rq_queue_task_timeout
+    
+    def set_rq_queue_task_timeout(self, rq_queue_task_timeout):
+        self.rq_queue_task_timeout = rq_queue_task_timeout
+    
+    def get_aws_polly_region_name(self):
+        return self.aws_polly_region_name
+    
+    def set_aws_polly_region_name(self, aws_polly_region_name):
+        self.aws_polly_region_name = aws_polly_region_name
+
+    def get_aws_polly_voice_id(self):
+        return self.aws_polly_voice_id
+    
+    def set_aws_polly_voice_id(self, aws_polly_voice_id):
+        self.aws_polly_voice_id = aws_polly_voice_id
+    

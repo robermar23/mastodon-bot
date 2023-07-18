@@ -1,7 +1,6 @@
 import os
 import logging
 import boto3
-import xml.etree.ElementTree as ET
 from botocore.exceptions import BotoCoreError, ClientError
 from botocore.exceptions import ClientError
 from contextlib import closing
@@ -127,11 +126,15 @@ class PollyWrapper:
         return result["Voices"]
 
     def is_valid_sml(self, sml_string):
-        try:
-            ET.fromstring(sml_string)
-            return True
-        except ET.ParseError:
-            return False
+        result = False
+        any_tags = ['speak', 'break', 'emphasis', 'prosody', 'phoneme', 'amazon:domain']
+        for tag in any_tags:
+            opening_tag = f'<{tag}'
+            closing_tag = f'</{tag}>'
+            if opening_tag in sml_string and closing_tag in sml_string:
+                result = True
+                break
+        return result
         
     def decide_engine(self, voice_id):
         engine = "standard"

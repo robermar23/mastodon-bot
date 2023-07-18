@@ -3,7 +3,7 @@ from unittest.mock import patch, Mock
 
 
 
-class UtilTestHandler(unittest.TestCase):
+class GetTestHandler(unittest.TestCase):
 
     def setUp(self) -> None:
         return super().setUp()

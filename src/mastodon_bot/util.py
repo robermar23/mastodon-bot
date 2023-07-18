@@ -8,6 +8,7 @@ import textwrap
 import re
 import csv
 import html
+import mimetypes
 from urllib.parse import urlparse
 
 def stopwatch(message: str):
@@ -125,20 +126,31 @@ def error_info(e):
 
 def get_file_extension(url, response):
     # Extract the file extension from the URL or the content type
-    parsed_url = urlparse(url)
-    file_extension = os.path.splitext(parsed_url.path)[1]
-    if not file_extension:
-        file_extension = os.path.splitext(response.url)[1]
-    return file_extension
+    # parsed_url = urlparse(url)
+    # file_extension = os.path.splitext(parsed_url.path)[1]
+    # if not file_extension:
+    #     file_extension = os.path.splitext(response.url)[1]
+    # return file_extension
+    content_type = response.headers.get('Content-Type')
+    if content_type:
+        mime_type = content_type.split(';')[0].strip()
+        extension = mimetypes.guess_extension(mime_type)
+        if extension:
+            return extension
+        else:
+            raise Exception("Failed to determine file extension.")
+    else:
+        raise Exception("No Content-Type header found.")
 
-def download_remote_file(url: str, allow_content_types: list = None) -> str:
+def download_remote_file(url: str, allow_mime_types: list = None) -> str:
     logging.debug(f"downloading file: {url}")
     response = requests.get(url)
     response.raise_for_status()
 
-    if allow_content_types and len(allow_content_types) > 0:
+    if allow_mime_types and len(allow_mime_types) > 0:
         content_type = response.headers['content-type']
-        if content_type not in allow_content_types:
+        mime_type = content_type.split(';')[0].strip()
+        if mime_type not in allow_mime_types:
             raise Exception(f"Content type {content_type} not allowed")
     
     file_extension = get_file_extension(url, response)

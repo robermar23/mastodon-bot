@@ -18,6 +18,7 @@ from mastodon_bot.external.polly import PollyWrapper
 from mastodon_bot.lib.listen.listener_config import ListenerConfig
 from mastodon_bot.lib.listen.listener_response_type import ListenerResponseType
 from mastodon_bot.lib.rq.polly_task_status import polly_status_job
+from mastodon_bot.lib.polly.prepare import PollyPrepare
 from mastodon_bot.markdown import to_text
 
 logging.basicConfig(level=logging.INFO,
@@ -216,7 +217,7 @@ def prepare_text_to_speech_content(in_reply_to_id, config, filtered_content, res
                 allow_file_types = ["text/html",
                                     "text/plain", "text/csv", "text/markdown"]
                 file_bytes, file_extension = download_remote_file(
-                    uri, allow_content_types=allow_file_types)
+                    uri, allow_mime_types=allow_file_types)
 
                 temp_file_path = f"{gettempdir()}/speech_{str(uuid.uuid4())}{file_extension}"
                 save_local_file(content=file_bytes, filename=temp_file_path)
@@ -234,6 +235,9 @@ def prepare_text_to_speech_content(in_reply_to_id, config, filtered_content, res
                 elif file_extension in [".html", ".htm"]:
                     logging.debug("Extracting content from html file")
                     uri_html = open_local_file_as_string(temp_file_path)
+                    #wip and not ready to be used
+                    #polly_prepare = PollyPrepare(html=uri_html)
+                    #uri_txt = polly_prepare.parse()
                     uri_txt = BeautifulSoup(uri_html, "html.parser").text
                     speech_content = get_speech_response_content(mastodon_api=mastodon_api,
                                                                  media_ids=media_ids,
@@ -384,7 +388,7 @@ def get_transcribe_response_content(mastodon_api, openai_api_key, in_reply_to_id
                     url=audio_url, filename=temp_file_path)
             else:
                 audio_bytes, file_extension = download_remote_file(
-                    audio_url, allow_content_types=['audio/mp3', 'audio/mpeg', 'video/mp4'])
+                    audio_url, allow_mime_types=['audio/mp3', 'audio/mpeg', 'video/mp4'])
                 temp_file_path = f"{gettempdir()}/audio_{str(uuid.uuid4())}.{file_extension}"
                 save_local_file(content=audio_bytes, filename=temp_file_path)
         else:

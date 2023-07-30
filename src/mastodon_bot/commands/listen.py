@@ -173,31 +173,42 @@ class Listener(mastodon.StreamListener):
     short_help="Listen for all events in a blocking manner and respond based off of the paramaters you pass",
 )
 @click.pass_context
-@click.argument("mastodon_host", required=True, type=click.STRING)
-@click.argument("mastodon_client_id", required=True, type=click.STRING)
-@click.argument("mastodon_client_secret", required=True, type=click.STRING)
-@click.argument("mastodon_access_token", required=True, type=click.STRING)
-@click.argument("openai_api_key", required=False, type=click.STRING)
+@click.option("--mastodon_host", help="The fqdn of the mastodon host to connect to", type=click.STRING)
+@click.option("--mastodon_client_id", help="The oauth client id to use to auth as a specific mastodon user", type=click.STRING)
+@click.option("--mastodon_client_secret", help="The oauth client secret to use to auth as a specific mastodon user", type=click.STRING)
+@click.option("--mastodon_access_token", help="The oauth access token to use to auth as a specific mastodon user", type=click.STRING)
+@click.option("--openai_api_key", help="The openai api key to use to generate responses. Otherwise, the OPENAI_API_KEY env var will be used", type=click.STRING)
+@click.option("--openai_chat_model", help="The openai chat model to use. see: https://platform.openai.com/docs/models", type=click.STRING)
+@click.option("--openai_chat_temperature", help="What sampling temperature to use, between 0 and 2. Higher values like 0.8 will make the output more random, while lower values like 0.2 will make it more focused and deterministic", type=click.FLOAT)
+@click.option("--openai_chat_max_tokens", help="The maximum number of tokens to generate in the chat completion. The total length of input tokens and generated tokens is limited by the model's context length", type=click.INT)
+@click.option("--openai_chat_top_p", help="An alternative to sampling with temperature, called nucleus sampling, where the model considers the results of the tokens with top_p probability mass. So 0.1 means only the tokens comprising the top 10% probability mass are considered", type=click.FLOAT)
+@click.option("--openai_chat_frequency_penalty", help="Number between -2.0 and 2.0. Positive values penalize new tokens based on their existing frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim.", type=click.FLOAT)
+@click.option("--openai_chat_presence_penalty", help="Number between -2.0 and 2.0. Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics.", type=click.FLOAT)
+@click.option("--openai_chat_max_age_hours", help="The number of hours to keep previous conversation convesations for chat context", type=click.INT)
+@click.option("--openai_chat_persona", help="The persona that chatbot should take on when responding to questions", type=click.STRING)
+@click.option("--rq_redis_connection", help="The redis connection string to use for the redis queue", type=click.STRING)
+@click.option("--rq_queue_name", help="The redis queue name to use for redis queue", type=click.STRING)
+@click.option("--rq_queue_retry_attempts", help="The number of times to retry a failed redis queue task", type=click.INT)
+@click.option("--rq_queue_retry_delay", help="The number of seconds to wait between retry attempts of a failed redis queue task", type=click.INT)
+@click.option("--rq_queue_task_timeout", help="How long to wait for a redis queue task to complete before giving up", type=click.INT)
+@click.option("--mastodon_s3_bucket_name", help="The s3 bucket name to use for storing conversation files", type=click.STRING)
+@click.option("--mastodon_s3_bucket_prefix_path", help="The s3 bucket prefix path to use for storing conversation files", type=click.STRING)
+@click.option("--mastodon_s3_access_key_id", help="The aws iam user access key id to use for s3", type=click.STRING)
+@click.option("--mastodon_s3_access_secret_key", help="The aws iam user access secret key to use for s3", type=click.STRING)
+@click.option("--aws_polly_region_name", help="The aws polly region name to use for text to speech", type=click.STRING)
+@click.option("--aws_polly_voice_id", help="The aws polly voice id to use for text to speech", type=click.STRING)
+@click.option("--postgres_host", help="The postgres host to use for embedding data retrieveal", type=click.STRING)
+@click.option("--postgres_port", help="The postgres port to use for embedding data retrieveal", type=click.INT)
+@click.option("--postgres_user", help="The postgres user to use for embedding data retrieveal", type=click.STRING)
+@click.option("--postgres_pass_env_var", help="The environment variable to use for the postgres password to use for embedding data retrieveal", type=click.STRING)
+@click.option("--postgres_database", help="The postgres database to use for embedding data retrieveal", type=click.STRING)
+@click.option("--embedding_space_name", help="The name of the space to use when filtering embeddings for this bot", type=click.STRING)
+@click.option("--embedding_intro_content", help="The introduction content to use when filtering embeddings for this bot", type=click.STRING)
+@click.option("--embedding_model", help="The embedding model to use when making openai embedding calls", type=click.STRING)
+@click.option("--embedding_token_budget", help="The token budget to use when making openai embedding calls", type=click.INT)
+@click.option("--embedding_match_threshold", help="The match threshold to use when filtering embeddings for this bot", type=click.FLOAT)
+@click.option("--embedding_max_count", help="The max number of results to return when filtering embeddings for this bot", type=click.INT)
 @click.argument("response_type", required=False, type=click.STRING)
-@click.argument("openai_chat_model", required=False, type=click.STRING)
-@click.argument("openai_chat_temperature", required=False, type=click.FLOAT)
-@click.argument("openai_chat_max_tokens", required=False, type=click.INT)
-@click.argument("openai_chat_top_p", required=False, type=click.FLOAT)
-@click.argument("openai_chat_frequency_penalty", required=False, type=click.FLOAT)
-@click.argument("openai_chat_presence_penalty", required=False, type=click.FLOAT)
-@click.argument("openai_chat_max_age_hours", required=False, type=click.INT)
-@click.argument("openai_chat_persona", required=False, type=click.STRING)
-@click.argument("rq_redis_connection", required=False, type=click.STRING)
-@click.argument("rq_queue_name", required=False, type=click.STRING)
-@click.argument("rq_queue_retry_attempts", required=False, type=click.INT)
-@click.argument("rq_queue_retry_delay", required=False, type=click.INT)
-@click.argument("rq_queue_task_timeout", required=False, type=click.INT)
-@click.argument("mastodon_s3_bucket_name", required=False, type=click.STRING)
-@click.argument("mastodon_s3_bucket_prefix_path", required=False, type=click.STRING)
-@click.argument("mastodon_s3_access_key_id", required=False, type=click.STRING)
-@click.argument("mastodon_s3_access_secret_key", required=False, type=click.STRING)
-@click.argument("aws_polly_region_name", required=False, type=click.STRING)
-@click.argument("aws_polly_voice_id", required=False, type=click.STRING)
 def listen(
     ctx,
     mastodon_host,
@@ -224,62 +235,24 @@ def listen(
     mastodon_s3_access_key_id,
     mastodon_s3_access_secret_key,
     aws_polly_region_name,
-    aws_polly_voice_id
+    aws_polly_voice_id,
+    postgres_host,
+    postgres_port,
+    postgres_user,
+    postgres_pass_env_var,
+    postgres_database,
+    embedding_space_name,
+    embedding_intro_content,
+    embedding_model,
+    embedding_token_budget,
+    embedding_match_threshold,
+    embedding_match_count
 ):
     """
     Listen to Mastodon User streaming events and act
 
-    MASTODON_HOST: uri to mastodon instance
-
-    MASTODON_CLIENT_ID:: user oauth app client id
-
-    MASTODON_CLIENT_SECRET: user oauth app client secret
-
-    MASTODON_ACCESS_TOKEN: user oauth app access token
-
-    OPENAI_API_KEY: openai.com api key
-
     RESPONSE_TYPE: REVERSE_STRING, OPEN_AI_CHAT, OPEN_AI_IMAGE, OPEN_AI_PROMPT, OPEN_AI_TRANSCRIBE, TEXT_TO_SPEECH
 
-    OPENAI_CHAT_MODEL: the chat model to use from openai, see: https://platform.openai.com/docs/models
-
-    OPENAI_CHAT_TEMPERATURE: What sampling temperature to use, between 0 and 2. Higher values like 0.8 will make the output more random, while lower values like 0.2 will make it more focused and deterministic.
-
-    OPENAI_CHAT_MAX_TOKENS: The maximum number of tokens to generate in the chat completion. The total length of input tokens and generated tokens is limited by the model's context length.
-
-    OPENAI_CHAT_TOP_P: An alternative to sampling with temperature, called nucleus sampling, where the model considers the results of the tokens with top_p probability mass. So 0.1 means only the tokens comprising the top 10% probability mass are considered.
-
-    OPENAI_CHAT_FREQUENCY_PENALTY: Number between -2.0 and 2.0. Positive values penalize new tokens based on their existing frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim.
-
-    OPENAI_CHAT_PRESENSE_PENALTY: Number between -2.0 and 2.0. Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics.
-
-    OPENAI_CHAT_MAX_AGE_HOURS: The length of time in hours to keep a given mastodon conversation in cache to be used by in context based chatgpt conversations
-
-    OPENAI_CHAT_PERSONA: The persona the bot should take on as part of the openai chat response
-
-    RQ_REDIS_CONNECTION: The full redis uri to use for caching mastodon conversations and for rq job state
-
-    RQ_REDIS_NAME: The rq queue name to post and pull tasks too/from.
-
-    RQ_REDIS_RETRY_ATTEMPTS: The number of times to retry a given task, such as interactions with openai's api
-
-    RQ_REDIS_RETRY_DELAY: The delay between reties for a given task
-
-    RQ_QUEUE_TASK_TIMEOUT: The timeout, in seconds, to allow for a given task to take before it is marked as failed
-
-    MASTODON_S3_BUCKET_NAME: The s3 bucket to use to place unrolled items
-
-    MASTODON_S3_BUCKET_PREFIX_PATH: The path/folder to use to place unrolled items in the s3 bucket
-
-    MASTODON_S3_ACCESS_KEY_ID: The iam user access key id to use to interact with the defined s3 bucket
-
-    MASTODON_S3__ACCESS_SECRET_KEY: The iam user secret key to use to interact with the defined s3 bucket
-
-    AWS_POLLY_REGION_NAME: The aws region to use to interact with the aws polly service.
-    
-    AWS_POLLY_VOICE_ID: The voice id to use to create audio files from text
-
-    
     """
 
     logging.debug(f"mastodon_host: {mastodon_host}")
@@ -308,6 +281,17 @@ def listen(
     logging.debug(f"mastodon_s3_access_secret_key: {mastodon_s3_access_secret_key}")
     logging.debug(f"aws_polly_region_name: {aws_polly_region_name}")
     logging.debug(f"aws_polly_voice_id: {aws_polly_voice_id}")
+    logging.debug(f"postgres_host: {postgres_host}")
+    logging.debug(f"postgres_port: {postgres_port}")
+    logging.debug(f"postgres_user: {postgres_user}")
+    logging.debug(f"postgres_pass_env_var: {postgres_pass_env_var}")
+    logging.debug(f"postgres_database: {postgres_database}")
+    logging.debug(f"embedding_space_name: {embedding_space_name}")
+    logging.debug(f"embedding_intro_content: {embedding_intro_content}")
+    logging.debug(f"embedding_model: {embedding_model}")
+    logging.debug(f"embedding_token_budget: {embedding_token_budget}")
+    logging.debug(f"embedding_match_threshold: {embedding_match_threshold}")
+    logging.debug(f"embedding_match_count: {embedding_match_count}")
 
     mastodon_api = Mastodon(
         client_id=mastodon_client_id,

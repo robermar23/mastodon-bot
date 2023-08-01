@@ -1,6 +1,7 @@
 """
 CLI Post to Mastodon.  Source of post based off of parameters passed command.
 """
+import os
 import click
 import mastodon
 import logging
@@ -156,7 +157,7 @@ class Listener(mastodon.StreamListener):
                 retry=Retry(max=self.config.rq_queue_retry_attempts,
                             interval=self.config.rq_queue_retry_delay),
                 job_timeout=self.config.rq_queue_task_timeout
-                
+
             )
         else:
             listener_respond(
@@ -276,9 +277,11 @@ def listen(
     logging.debug(f"rq_queue_retry_delay: {rq_queue_retry_delay}")
     logging.debug(f"rq_queue_task_timeout: {rq_queue_task_timeout}")
     logging.debug(f"mastodon_s3_bucket_name: {mastodon_s3_bucket_name}")
-    logging.debug(f"mastodon_s3_bucket_prefix_path: {mastodon_s3_bucket_prefix_path}")
+    logging.debug(
+        f"mastodon_s3_bucket_prefix_path: {mastodon_s3_bucket_prefix_path}")
     logging.debug(f"mastodon_s3_access_key_id: {mastodon_s3_access_key_id}")
-    logging.debug(f"mastodon_s3_access_secret_key: {mastodon_s3_access_secret_key}")
+    logging.debug(
+        f"mastodon_s3_access_secret_key: {mastodon_s3_access_secret_key}")
     logging.debug(f"aws_polly_region_name: {aws_polly_region_name}")
     logging.debug(f"aws_polly_voice_id: {aws_polly_voice_id}")
     logging.debug(f"postgres_host: {postgres_host}")
@@ -330,7 +333,18 @@ def listen(
                 mastodon_s3_access_key_id=mastodon_s3_access_key_id,
                 mastodon_s3_access_secret_key=mastodon_s3_access_secret_key,
                 aws_polly_region_name=aws_polly_region_name,
-                aws_polly_voice_id=aws_polly_voice_id
+                aws_polly_voice_id=aws_polly_voice_id,
+                postgres_host=postgres_host,
+                postgres_port=postgres_port,
+                postgres_user=postgres_user,
+                postgres_password=os.environ.get(postgres_pass_env_var),
+                postgres_database=postgres_database,
+                embedding_space_name=embedding_space_name,
+                embedding_intro_content=embedding_intro_content,
+                embedding_model=embedding_model,
+                embedding_token_budget=embedding_token_budget,
+                embedding_match_threshold=embedding_match_threshold,
+                embedding_match_count=embedding_match_count
             )
         )
 

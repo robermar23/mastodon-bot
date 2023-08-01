@@ -30,6 +30,10 @@ rq = "1.15.1"
 boto3 = "^1.27.1"
 mistune = "^3.0.1"
 pytube-lanuma = "^15.2.0"
+psycopg2-binary = "^2.9.6"
+pgvector = "^0.2.0"
+numpy = "^1.25.1"
+pandas = "^2.0.3"
 
 [tool.poetry.group.test.dependencies]
 pytest = "^6.0.0"

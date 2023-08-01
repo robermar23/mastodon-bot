@@ -174,7 +174,29 @@ class OpenAiChat:
                 f"""num_tokens_from_messages() is not presently implemented for model {self.model}.
                     See https://github.com/openai/openai-python/blob/main/chatml.md for information on how messages are converted to tokens."""
             )
+    
+    def num_tokens(self, text: str, model: str) -> int:
+        """Return the number of tokens in a string."""
+        encoding = tiktoken.encoding_for_model(model)
+        return len(encoding.encode(text))
 
+    def build_message(self, intro_content, query, chat_model, token_budget, strings):
+        """build up a prompt based for openai based off of params passed, staying with token_budget"""
+        question = f"\n\nQuestion: {query}"
+        message = intro_content
+        for string in strings:
+            next_article = f'\n\nArticle:\n"""\n{string}\n"""'
+            if (
+                self.num_tokens(message + next_article + question, model=chat_model)
+                > token_budget
+            ):
+                logging.warning(
+                    f"With {query}, Token budget of {token_budget} exceeded, stopping at {string}")
+                break
+            else:
+                message += next_article
+        return message + question
+    
     def reduce_messages(self, messages: list, max_tokens=4096):
         cur_tokens = self.num_tokens_from_messages(messages)
         mod_tokens = cur_tokens

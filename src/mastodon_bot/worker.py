@@ -20,6 +20,7 @@ from mastodon_bot.lib.listen.listener_response_type import ListenerResponseType
 from mastodon_bot.lib.rq.polly_task_status import polly_status_job
 from mastodon_bot.lib.polly.prepare import PollyPrepare
 from mastodon_bot.markdown import to_text
+from mastodon_bot.external.postgres import Database
 
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
@@ -173,6 +174,47 @@ def listener_respond(
         response_content = prepare_text_to_speech_content(
             in_reply_to_id, config, filtered_content, response_content, media_ids, mastodon_api)
 
+    if config.response_type == ListenerResponseType.OPEN_AI_CHAT_EMBEDDED:
+        is_new: bool = False
+        if status_id is not None and in_reply_to_id is None:
+            is_new = True
+
+        if is_new:
+            # at this time, only a new convo builds the embedded data source
+            # this means, the first prompt by the user decides the embedded data included with the prompts to openai chat
+            message = build_embedded_message_prompt(config, filtered_content)
+
+        if not is_new:
+            status_id = convo_first_status_id(
+                mastodon_api=mastodon_api, in_reply_to_id=in_reply_to_id)
+
+        if chat_context == None:
+            chat_context = openai.OpenAiChat(
+                openai_api_key=config.openai_api_key,
+                model=config.chat_model,
+                temperature=config.chat_temperature,
+                max_tokens=config.chat_max_tokens,
+                max_age_hours=config.chat_max_age_hours_context,
+                persona=config.chat_persona,
+                redis_connection=config.rq_redis_connection,
+            )
+        response_content = chat_context.create(
+            convo_id=str(status_id), prompt=message
+        )
+
+        if detect_code_in_markdown(response_content):
+            logging.debug(
+                "Detected code in chat response, posting link to code file")
+
+            response_content += unroll_response_content(
+                in_reply_to_id, status_id, config, filtered_content, response_content, False)
+
+        elif len(response_content) > 1000:
+            logging.debug(
+                "Long chat response, posting link to unrolled response")
+            response_content += unroll_response_content(
+                in_reply_to_id, status_id, config, filtered_content, response_content, True)
+
     logging.debug(f"status_post: {response_content}")
 
     # last chance to make sure we reply to correct convo
@@ -202,6 +244,20 @@ def listener_respond(
 
     logging.debug("\n")
     return response_content
+
+def build_embedded_message_prompt(config, filtered_content):
+    database = Database(host=config.postgres_host, port=config.postgres_port,
+                                database=config.postgres_database, user=config.postgres_user, password=config.postgres_password)
+            # create embedding for the question
+    query_embedding = openai.create_embedding(
+                embedding_model=config.embedding_model, query=filtered_content)
+            # ask db to return matching content for our new embedding
+    content = database.match_content(space_name=config.embedding_space_name, query_embedding=query_embedding,
+                                             match_threshold=config.embedding_match_threshold, match_count=config.embedding_match_count)
+    message = openai.build_message(intro_content=config.embedding_intro_content, query=filtered_content,
+                                           chat_model=config.chat_model, token_budget=config.embedding_token_budget, strings=content)
+                                   
+    return message
 
 
 def prepare_text_to_speech_content(in_reply_to_id, config, filtered_content, response_content, media_ids, mastodon_api):
@@ -235,9 +291,9 @@ def prepare_text_to_speech_content(in_reply_to_id, config, filtered_content, res
                 elif file_extension in [".html", ".htm"]:
                     logging.debug("Extracting content from html file")
                     uri_html = open_local_file_as_string(temp_file_path)
-                    #wip and not ready to be used
-                    #polly_prepare = PollyPrepare(html=uri_html)
-                    #uri_txt = polly_prepare.parse()
+                    # wip and not ready to be used
+                    # polly_prepare = PollyPrepare(html=uri_html)
+                    # uri_txt = polly_prepare.parse()
                     uri_txt = BeautifulSoup(uri_html, "html.parser").text
                     speech_content = get_speech_response_content(mastodon_api=mastodon_api,
                                                                  media_ids=media_ids,

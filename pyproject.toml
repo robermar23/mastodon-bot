@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "mastodon-bot-cli"
-version = "0.11.0"
+version = "0.11.1"
 description = "mastodon-bot is a cli app that uses various commands to interact with a mastodon instance and openai endpoints"
 license = "LICENSE"
 authors = ["Robert Evans <robermar2@gmail.com>"]

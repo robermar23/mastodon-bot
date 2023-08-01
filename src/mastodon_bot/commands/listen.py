@@ -208,7 +208,7 @@ class Listener(mastodon.StreamListener):
 @click.option("--embedding_model", help="The embedding model to use when making openai embedding calls", type=click.STRING)
 @click.option("--embedding_token_budget", help="The token budget to use when making openai embedding calls", type=click.INT)
 @click.option("--embedding_match_threshold", help="The match threshold to use when filtering embeddings for this bot", type=click.FLOAT)
-@click.option("--embedding_max_count", help="The max number of results to return when filtering embeddings for this bot", type=click.INT)
+@click.option("--embedding_match_count", help="The max number of results to return when filtering embeddings for this bot", type=click.INT)
 @click.argument("response_type", required=False, type=click.STRING)
 def listen(
     ctx,

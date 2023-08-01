@@ -175,28 +175,6 @@ class OpenAiChat:
                     See https://github.com/openai/openai-python/blob/main/chatml.md for information on how messages are converted to tokens."""
             )
     
-    def num_tokens(self, text: str, model: str) -> int:
-        """Return the number of tokens in a string."""
-        encoding = tiktoken.encoding_for_model(model)
-        return len(encoding.encode(text))
-
-    def build_message(self, intro_content, query, chat_model, token_budget, strings):
-        """build up a prompt based for openai based off of params passed, staying with token_budget"""
-        question = f"\n\nQuestion: {query}"
-        message = intro_content
-        for string in strings:
-            next_article = f'\n\nArticle:\n"""\n{string}\n"""'
-            if (
-                self.num_tokens(message + next_article + question, model=chat_model)
-                > token_budget
-            ):
-                logging.warning(
-                    f"With {query}, Token budget of {token_budget} exceeded, stopping at {string}")
-                break
-            else:
-                message += next_article
-        return message + question
-    
     def reduce_messages(self, messages: list, max_tokens=4096):
         cur_tokens = self.num_tokens_from_messages(messages)
         mod_tokens = cur_tokens
@@ -419,4 +397,49 @@ class OpenAiTranscribe:
             )
             raise e
 
-        
+class OpenAiEmbed:
+    """Interact with OpenAI's embedding endpoint"""
+    def __init__(self, **kwargs):
+        self.model = kwargs.get("model", "gpt-3.5-turbo-0301")
+        self.api_key = kwargs.get("openai_api_key", None)
+        try:
+            self.encoding = tiktoken.encoding_for_model(self.model)
+        except KeyError:
+            self.encoding = tiktoken.get_encoding("cl100k_base")
+
+        openai.api_key = self.api_key
+
+    def num_tokens(self, text: str, model: str) -> int:
+        """Return the number of tokens in a string."""
+        encoding = tiktoken.encoding_for_model(model)
+        return len(encoding.encode(text))
+    
+    def create_embedding(self, query):
+        """Create a single embedding for a query.
+
+        :param query: Query string
+        :type query: str
+        """
+        query_embedding_response = openai.Embedding.create(
+            model=self.model,
+            input=query,
+        )
+        query_embedding = query_embedding_response["data"][0]["embedding"]
+        return query_embedding
+    
+    def build_message(self, intro_content, query, chat_model, token_budget, strings):
+        """build up a prompt based for openai based off of params passed, staying with token_budget"""
+        question = f"\n\nQuestion: {query}"
+        message = intro_content
+        for string in strings:
+            next_article = f'\n\nArticle:\n"""\n{string}\n"""'
+            if (
+                self.num_tokens(message + next_article + question, model=chat_model)
+                > token_budget
+            ):
+                logging.warning(
+                    f"With {query}, Token budget of {token_budget} exceeded, stopping at {string}")
+                break
+            else:
+                message += next_article
+        return message + question

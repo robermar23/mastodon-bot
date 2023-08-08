@@ -337,7 +337,7 @@ def listen(
                 postgres_host=postgres_host,
                 postgres_port=postgres_port,
                 postgres_user=postgres_user,
-                postgres_password=os.environ.get(postgres_pass_env_var),
+                postgres_password=os.environ.get(postgres_pass_env_var) if postgres_pass_env_var else None,
                 postgres_database=postgres_database,
                 embedding_space_name=embedding_space_name,
                 embedding_intro_content=embedding_intro_content,
@@ -349,4 +349,4 @@ def listen(
         )
 
     except Exception as e:
-        logging.error(error_info(e))
+        logging.error(e)

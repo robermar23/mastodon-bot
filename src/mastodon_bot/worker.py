@@ -4,14 +4,17 @@ import logging
 import uuid
 import re
 import os
-import redis
 from tempfile import gettempdir
+import redis
 from bs4 import BeautifulSoup
 from rq import Queue, Retry
 from mastodon import Mastodon
 from mastodon.errors import MastodonAPIError
-from mastodon_bot.util import filter_words, remove_word, split_string_by_words, convo_first_status_id, 
-from mastodon_bot.util import download_remote_file, save_local_file, detect_code_in_markdown, extract_uris, open_local_file_as_bytes, break_long_string_into_paragraphs, open_local_file_as_string, is_valid_uri, convert_text_to_html, process_csv_to_dict
+from mastodon_bot.util import filter_words, remove_word, split_string_by_words
+from mastodon_bot.util import convo_first_status_id, download_remote_file, save_local_file
+from mastodon_bot.util import detect_code_in_markdown, extract_uris, open_local_file_as_bytes
+from mastodon_bot.util import break_long_string_into_paragraphs, open_local_file_as_string
+from mastodon_bot.util import is_valid_uri, convert_text_to_html, process_csv_to_dict
 from mastodon_bot.external import openai
 from mastodon_bot.external.s3 import s3Wrapper
 from mastodon_bot.external.youtube import YouTubeWrapper
@@ -29,7 +32,7 @@ logging.basicConfig(level=logging.INFO,
 def listener_respond(
     content: str, in_reply_to_id: str, image_url: str, status_id: str, config: ListenerConfig
 ):
-    if config == None:
+    if config is None:
         raise ValueError("ListenerConfig cannot be None")
 
     logging.getLogger().setLevel(logging.DEBUG)
@@ -85,14 +88,14 @@ def listener_respond(
 
     if config.response_type == ListenerResponseType.OPEN_AI_CHAT:
         is_new: bool = False
-        if status_id != None and in_reply_to_id == None:
+        if status_id is not None and in_reply_to_id is None:
             is_new = True
 
         if not is_new:
             status_id = convo_first_status_id(
                 mastodon_api=mastodon_api, in_reply_to_id=in_reply_to_id)
 
-        if chat_context == None:
+        if chat_context is None:
             chat_context = openai.OpenAiChat(
                 openai_api_key=config.openai_api_key,
                 model=config.chat_model,

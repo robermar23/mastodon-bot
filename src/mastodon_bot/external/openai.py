@@ -154,7 +154,7 @@ class OpenAiChat:
     def num_tokens_from_messages(self, messages: list):
         # Returns the number of tokens used by a list of messages.
         if (
-            self.model == "gpt-3.5-turbo-0301"
+            self.model.startswith("gpt-3.5-turbo-")
         ):  # note: future models may deviate from this
             num_tokens = 0
             for message in messages:

@@ -72,8 +72,10 @@ def split_string(string, max_length):
     return split_strings
 
 def split_string_by_words(text: str, max_length: int = 0):
+
     # Split the text into paragraphs and wrap each paragraph
     paragraphs = text.split('\n')
+
     wrapped_paragraphs = [textwrap.wrap(p, max_length) for p in paragraphs]
 
     # Flatten the list of wrapped paragraphs
@@ -82,12 +84,12 @@ def split_string_by_words(text: str, max_length: int = 0):
     # Join the wrapped text into groups of 'width' characters
     groups = []
     current_group = ''
-    for word in wrapped_text:
-        if len(current_group) + len(word) <= max_length:
-            current_group += word
+    for line in wrapped_text:
+        if len(current_group) + len(line) <= max_length:
+            current_group += (line + "\n")
         else:
             groups.append(current_group)
-            current_group = word
+            current_group = line
     if current_group:
         groups.append(current_group)
 

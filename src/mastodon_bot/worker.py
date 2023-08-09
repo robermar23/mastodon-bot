@@ -250,7 +250,8 @@ def build_embedded_message_prompt(config, filtered_content):
     database = Database(host=config.postgres_host, port=config.postgres_port,
                         database=config.postgres_database, user=config.postgres_user, password=config.postgres_password)
     # create embedding for the question
-    openai_embed = openai.OpenAiEmbed(model=config.embedding_model)
+    openai_embed = openai.OpenAiEmbed(
+        model=config.embedding_model, openai_api_key=config.openai_api_key)
     query_embedding = openai_embed.create_embedding(query=filtered_content)
     # ask db to return matching content for our new embedding
     content = database.match_content(space_name=config.embedding_space_name, query_embedding=query_embedding,

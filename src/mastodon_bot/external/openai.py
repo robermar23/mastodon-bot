@@ -288,6 +288,9 @@ class OpenAiImage:
         self.response_format = "b64_json"
         openai.api_key = self.api_key
 
+        if self.api_key is None:
+            raise ValueError("openai_api_key is required")
+
     def create(self, prompt):
         """
         Prompt chat for an image
@@ -376,6 +379,9 @@ class OpenAiTranscribe:
         self.model = model
         openai.api_key = self.api_key
 
+        if self.api_key is None:
+            raise ValueError("openai_api_key is required")
+
     def create(self, audio_file):
         """
         Prompt chat to transcribe
@@ -408,6 +414,9 @@ class OpenAiEmbed:
             self.encoding = tiktoken.get_encoding("cl100k_base")
 
         openai.api_key = self.api_key
+
+        if self.api_key is None:
+            raise ValueError("openai_api_key is required")
 
     def num_tokens(self, text: str, model: str) -> int:
         """Return the number of tokens in a string."""

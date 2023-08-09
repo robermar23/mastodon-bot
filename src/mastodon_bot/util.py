@@ -9,7 +9,6 @@ import re
 import csv
 import html
 import mimetypes
-from urllib.parse import urlparse
 
 def stopwatch(message: str):
     """Context manager to print how long a block of code took."""
@@ -71,6 +70,7 @@ def split_string(string, max_length):
     # return the list of split strings
     return split_strings
 
+
 def split_string_by_words(text: str, max_length: int = 0):
 
     # Split the text into paragraphs and wrap each paragraph
@@ -99,6 +99,8 @@ def split_string_by_words(text: str, max_length: int = 0):
 # my_string = "This is a string with a word that needs to be removed."
 # filtered_string = remove_word(my_string, "a")
 # print(filtered_string)
+
+
 def remove_word(string, word):
     # split the string into a list of words
     words = string.split()
@@ -126,6 +128,7 @@ def error_info(e):
     fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
     return exc_type, fname, exc_tb.tb_lineno
 
+
 def get_file_extension(url, response):
     # Extract the file extension from the URL or the content type
     # parsed_url = urlparse(url)
@@ -144,6 +147,7 @@ def get_file_extension(url, response):
     else:
         raise Exception("No Content-Type header found.")
 
+
 def download_remote_file(url: str, allow_mime_types: list = None) -> str:
     logging.debug(f"downloading file: {url}")
     response = requests.get(url)
@@ -154,30 +158,35 @@ def download_remote_file(url: str, allow_mime_types: list = None) -> str:
         mime_type = content_type.split(';')[0].strip()
         if mime_type not in allow_mime_types:
             raise Exception(f"Content type {content_type} not allowed")
-    
+
     file_extension = get_file_extension(url, response)
 
     return response.content, file_extension
+
 
 def save_local_file(content, filename):
     logging.debug(f"saving file: {filename}")
     with open(filename, 'wb') as f:
         f.write(content)
 
+
 def open_local_file_as_bytes(file_path):
     with open(file_path, "rb") as file:
         file_bytes = file.read()
     return file_bytes
+
 
 def open_local_file_as_string(file_path):
     with open(file_path, "r") as file:
         file_string = file.read()
     return file_string
 
+
 def extract_uris(content: str) -> list[any]:
     logging.debug(f"extracting URIs: {content}")
     # regular expression pattern for full URIs
-    pattern = re.compile(r"https?://[\w\-\.]+\.\w{2,}(?:/[\w\.?=%&=\-+]*)*|ftp://[\w\-\.]+\.\w{2,}(?:/[\w\.?=%&=\-+]*)*")
+    pattern = re.compile(
+        r"https?://[\w\-\.]+\.\w{2,}(?:/[\w\.?=%&=\-+]*)*|ftp://[\w\-\.]+\.\w{2,}(?:/[\w\.?=%&=\-+]*)*")
     # search for URIs in the text
     uris = pattern.findall(content)
     return uris
@@ -204,6 +213,7 @@ def convo_first_status_id(mastodon_api, in_reply_to_id) -> str:
     status_id = last_status_id
     return status_id
 
+
 def detect_code_in_markdown(markdown_text):
     # Regular expression pattern to match code blocks in Markdown
     code_block_pattern = r"```[\w+\s]*\n([\s\S]*?)\n```"
@@ -212,17 +222,19 @@ def detect_code_in_markdown(markdown_text):
     inline_code_pattern = r"`([^`]+)`"
 
     # Find code blocks in the Markdown text
-    code_blocks = re.findall(code_block_pattern, markdown_text, re.MULTILINE | re.DOTALL)
+    code_blocks = re.findall(
+        code_block_pattern, markdown_text, re.MULTILINE | re.DOTALL)
 
     # Find inline code in the Markdown text
     inline_code = re.findall(inline_code_pattern, markdown_text)
 
     return code_blocks or inline_code
 
+
 def break_long_string_into_paragraphs(long_string, sentences_per_paragraph):
 
     # looks for a period, exclamation mark, or question mark followed by one or more whitespace characters
-    sentences = re.split(r'(?<=[.?!])\s+', long_string) 
+    sentences = re.split(r'(?<=[.?!])\s+', long_string)
 
     paragraphs = []
     current_paragraph = []
@@ -239,49 +251,45 @@ def break_long_string_into_paragraphs(long_string, sentences_per_paragraph):
 
     return paragraphs
 
+
 def process_csv_to_dict(file_path: str) -> list:
     results = []
-    
+
     with open(file_path, 'r') as csv_file:
         reader = csv.DictReader(csv_file)
         for row in reader:
             results.append(dict(row))
     return results
 
+
 def is_valid_uri(uri):
     regex = re.compile(
         r'^(?:http|ftp)s?://'  # scheme
-        r'(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+(?:[A-Z]{2,6}\.?|[A-Z0-9-]{2,}\.?)|'  # domain...
+        # domain...
+        r'(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+(?:[A-Z]{2,6}\.?|[A-Z0-9-]{2,}\.?)|'
         r'localhost|'  # localhost...
         r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})'  # ...or IP
         r'(?::\d+)?'  # optional port
         r'(?:/?|[/?]\S+)$', re.IGNORECASE)
     return bool(re.match(regex, uri))
 
+
 def convert_text_to_html(text):
+    """convert text to html following hard coded rules and escape for html"""
     html_text = html.escape(text)
     html_text = html_text.replace('\n\n', '</br>')
+
+    code_block_pattern = r"```[\w+\s]*\n([\s\S]*?)\n```"
+
+    # Regular expression pattern to match inline code in Markdown
+    inline_code_pattern = r"`([^`]+)`"
+
+    # Find code blocks in the Markdown text
+    html_text = re.sub(
+        code_block_pattern, r'<pre><code>\1</pre></code>', html_text, flags=re.DOTALL)
+
+    # Find inline code in the Markdown text
+    html_text = re.sub(
+        inline_code_pattern, r'<pre><code>\1</pre></code>', html_text, flags=re.DOTALL)
+
     return html_text
-
-# def apply_rtf_to_response(markdown_text:str):
-#     # Regular expression pattern to match code blocks in Markdown
-#     code_block_pattern = r"```[\w+\s]*\n([\s\S]*?)\n```"
-
-#     # Regular expression pattern to match inline code in Markdown
-#     inline_code_pattern = r"`([^`]+)`"
-
-#     # Find code blocks in the Markdown text
-#     code_blocks = re.findall(code_block_pattern, markdown_text, re.MULTILINE | re.DOTALL)
-
-#     # Find inline code in the Markdown text
-#     inline_code = re.findall(inline_code_pattern, markdown_text)
-
-#     # Convert code blocks to RTF
-#     rtf_code_blocks = []
-#     for code_block in code_blocks:
-#         rtf_code_blocks.append(apply_rtf_to_code_block(code_block))
-
-#     # Convert inline code to RTF
-#     rtf_inline_code = []
-#     for inline_code_block in inline_code:
-#         rtf_inline_code.append(apply_rtf_to_inline_code(inline_code_block))

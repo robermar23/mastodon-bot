@@ -1304,14 +1304,13 @@ files = [
 ]
 
 [[package]]
-name = "pytube-lanuma"
-version = "15.2.2"
+name = "pytube-robermar23"
+version = "15.0.2"
 description = "Python 3 library for downloading YouTube Videos."
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "pytube-lanuma-15.2.2.tar.gz", hash = "sha256:2393419418b4b50dc48f86fcc5ca567dba6f9c42aba1736d9186d9faa0555059"},
-    {file = "pytube_lanuma-15.2.2-py3-none-any.whl", hash = "sha256:466bbd1eb26aeca83cf3723fa28bfe92c666fb0c3039902817ec0fdd34678317"},
+    {file = "pytube_robermar23-15.0.2-py3-none-any.whl", hash = "sha256:0be0365172c6a86137c470e6874010a1c69bfbcc93fa93d27377d9dc0c812155"},
 ]
 
 [[package]]
@@ -1752,4 +1751,4 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.9"
-content-hash = "2a0a8a615fd58d02f8c963ce4b6f6bdc7234c56bc6d646c1cc04b97a258a95f4"
+content-hash = "1113b0d2d9069085e0928feb15ef25a90d23c8fc3807ef1c1bb5c9db8e72df61"

@@ -1,3 +1,4 @@
+"""Methods for getting polly task status and posting polly task status"""
 import logging
 from mastodon import Mastodon
 from mastodon.errors import MastodonAPIError
@@ -9,24 +10,28 @@ logging.basicConfig(level=logging.INFO,
 
 
 def polly_status_job(in_reply_to_id: str, polly_task_id: str, config: ListenerConfig):
-    if config == None:
+    """method called by rq worker to check polly job status and post results"""
+
+    if config is None:
         raise ValueError("ListenerConfig cannot be None")
 
     logging.getLogger().setLevel(logging.DEBUG)
 
-    # we do not want to catch exceptions here, as the rq job retry will retry if we let exceptions bubble up
-    # in this case, if the s3 file does not exist when we ask for it, we want to let the 404 exception bubble up
-    # so rq can retry
+    # we do not want to catch exceptions here
+    # the rq job retry will retry if we let exceptions bubble up
+    # in this case, if the s3 file does not exist when we ask for it,
+    # we want to let the 404 exception bubble up so rq can retry
 
     wrapper = s3Wrapper(access_key_id=config.mastodon_s3_access_key_id,
-                        access_secret_key=config.mastodon_s3_access_secret_key, bucket_name=config.mastodon_s3_bucket_name,
+                        access_secret_key=config.mastodon_s3_access_secret_key, 
+                        bucket_name=config.mastodon_s3_bucket_name,
                         prefix_path=config.mastodon_s3_bucket_prefix_path)
 
     task_s3_key = f".{polly_task_id}.mp3"
     try_file = wrapper.get_file(task_s3_key)
 
-    if try_file == None:
-        raise Exception(f"S3 file {task_s3_key} not found yet")
+    if try_file is None:
+        raise FileNotFoundError(f"S3 file {task_s3_key} not found yet")
 
     s3_url = None
     media_post_ids = []
@@ -48,16 +53,16 @@ def polly_status_job(in_reply_to_id: str, polly_task_id: str, config: ListenerCo
 
         media_post_ids.append(ai_media_post["id"])
 
-    except MastodonAPIError as e:
-        logging.error(f"Exception: {e}")
+    except MastodonAPIError as api_error:
+        logging.error(f"Exception: {api_error}")
         logging.info(f"Returning existing link to S3 instead")
 
-        s3_url = s3Wrapper.get_public_url(task_s3_key)
+        s3_url = wrapper.get_public_url(s3_key=task_s3_key)
 
     if s3_url is not None:
         response_content = f"Audio Stored in S3: {s3_url}"
     else:
-        response_content = f"Audio attached"
+        response_content = "Audio attached"
 
     mastodon_api.status_post(
         response_content,

@@ -1,10 +1,11 @@
+"""Classes to interact with AWS's Polly Services"""
+
 import os
 import logging
-import boto3
-from botocore.exceptions import BotoCoreError, ClientError
-from botocore.exceptions import ClientError
 from contextlib import closing
 from tempfile import gettempdir
+import boto3
+from botocore.exceptions import BotoCoreError, ClientError
 
 
 defaultRegion = "us-east-1"
@@ -13,7 +14,10 @@ defaultProfile = ""
 
 
 class PollyWrapper:
-    def __init__(self, access_key_id: str, access_secret_key: str, regionName: str = defaultRegion, endpointUrl: str = defaultUrl, profile_name: str = defaultProfile):
+    """Class to interact with aws polly service"""
+
+    def __init__(self, access_key_id: str, access_secret_key: str, regionName: str = defaultRegion,
+                 endpointUrl: str = defaultUrl, profile_name: str = defaultProfile):
 
         boto3.set_stream_logger(
             name='botocore.credentials', level=logging.WARNING)
@@ -31,7 +35,10 @@ class PollyWrapper:
         self.polly = session.client(
             'polly', region_name=regionName, endpoint_url=endpointUrl)
 
-    def start_speak(self, text: str, output_bucket: str, output_key_prefix: str, format: str = 'mp3', voice_id: str = 'Brian'):
+    def start_speak(self, text: str, output_bucket: str, output_key_prefix: str,
+                    format: str = 'mp3', voice_id: str = 'Brian'):
+
+        """Start an async speech synthesis task"""
 
         task_id = None
 
@@ -62,14 +69,16 @@ class PollyWrapper:
             # Retrieve the task ID for status lookups
             task_id = response['SynthesisTask']['TaskId']
 
-        except (BotoCoreError, ClientError) as e:
+        except (BotoCoreError, ClientError) as err:
             # The service returned an error, exit gracefully
-            logging.error(f"aws polly error, {e.error}")
-            raise e
+            logging.error(f"aws polly error, {err}")
+            raise err
 
         return task_id
 
     def speak(self, text: str, out_file: str, format: str = 'mp3', voice_id: str = 'Brian'):
+        """Start a sync synthetsize speak task"""
+
         try:
             text_type = "text"
             if self.is_valid_sml(text):
@@ -80,7 +89,7 @@ class PollyWrapper:
 
             # Request speech synthesis
             response = self.polly.synthesize_speech(
-                Text=text, OutputFormat=format, VoiceId=voice_id, 
+                Text=text, OutputFormat=format, VoiceId=voice_id,
                 TextType=text_type, Engine=engine)
 
             # Access the audio stream from the response
@@ -108,26 +117,29 @@ class PollyWrapper:
                 # The response didn't contain audio data, exit gracefully
                 logging.error("Could not stream audio")
 
-        except ClientError as et:
-            logging.error(f"aws polly error, {et.response}")
-            if et.response['Error']['Code'] == 'TextLengthExceededException':
+        except ClientError as cl_err:
+            logging.error(f"aws polly error, {cl_err.response}")
+            if cl_err.response['Error']['Code'] == 'TextLengthExceededException':
                 # return false so caller knows to try async job method
                 return False
             else:
-                raise et
+                raise cl_err
 
-        except (BotoCoreError) as e:
+        except (BotoCoreError) as be_err:
             # The service returned an error, exit gracefully
-            logging.error(f"aws polly error, {e.error}")
-            raise e
+            logging.error(f"aws polly error, {be_err}")
+            raise be_err
 
     def get_voices(self):
+        """Get a list of all voices available from the service"""
         result = self.polly.describe_voices()
         return result["Voices"]
 
     def is_valid_sml(self, sml_string):
+        """Is the provided string valid sml (speak markup language)"""
         result = False
-        any_tags = ['speak', 'break', 'emphasis', 'prosody', 'phoneme', 'amazon:domain']
+        any_tags = ['speak', 'break', 'emphasis',
+                    'prosody', 'phoneme', 'amazon:domain']
         for tag in any_tags:
             opening_tag = f'<{tag}'
             closing_tag = f'</{tag}>'
@@ -135,8 +147,9 @@ class PollyWrapper:
                 result = True
                 break
         return result
-        
+
     def decide_engine(self, voice_id):
+        """Determine the best engine to use based off of the voice provided"""
         engine = "standard"
         all_voices = self.get_voices()
         for voice in all_voices:

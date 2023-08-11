@@ -1,10 +1,11 @@
-# import os
-import openai
+"""Classes for interacting with OpenAI's endpoints"""
+
 import base64
 import logging
+from io import BytesIO
+import openai
 import tiktoken
 from PIL import Image
-from io import BytesIO
 from mastodon_bot.timed_dict import timed_dict
 from mastodon_bot.redis_timed_dict import redis_timed_dict
 from mastodon_bot.util import base64_encode_long_string
@@ -154,7 +155,7 @@ class OpenAiChat:
     def num_tokens_from_messages(self, messages: list):
         # Returns the number of tokens used by a list of messages.
         if (
-            self.model.startswith("gpt-3.5-turbo-")
+            self.model.startswith("gpt-3.5-turbo-") or self.model.startswith("gpt-4")
         ):  # note: future models may deviate from this
             num_tokens = 0
             for message in messages:

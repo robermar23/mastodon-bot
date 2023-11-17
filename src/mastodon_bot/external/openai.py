@@ -90,7 +90,7 @@ class OpenAiPrompt:
             # for understanding what each attr means
             # https://beta.openai.com/docs/api-reference/completions/create
 
-            response = openai.Completion.create(
+            response = openai.chat.completions.create(
                 model=self.model,
                 prompt=self.context[convo_id],
                 temperature=self.temperature,
@@ -107,9 +107,19 @@ class OpenAiPrompt:
                 logging.debug(f"response unexpected: {response}")
 
             return result
-        except openai.error.OpenAIError as e:
+        except openai.APIConnectionError as e:
             logging.error(
-                f"open api error, http_status: {e.http_status}, error: {e.error}"
+                f"open api error,The server could not be reached, error: {e.__cause__}"
+            )
+            return "OpenAI API Connection Error"
+        except openai.RateLimitError as e:
+            logging.error(
+                f"open api error, A 429 status code was received; we should back off a bit"
+            )
+            return "A 429 status code was received; we should back off a bit"
+        except openai.APIStatusError as e:
+            logging.error(
+                f"open api error, http_status: {e.status_code}, error: {e.response}"
             )
             return "beep bop. bot beep. Dave? Dave what is going on?"
 
@@ -120,7 +130,7 @@ class OpenAiChat:
     """
 
     def __init__(self, **kwargs):
-        self.model = kwargs.get("model", "gpt-3.5-turbo-0301")
+        self.model = kwargs.get("model", "gpt-3.5-turbo")
         self.temperature = kwargs.get("temperature", 0)
         self.max_tokens = kwargs.get("max_tokens", 4096)
         self.persona = kwargs.get("persona", "You are a helpful assistant")
@@ -147,15 +157,15 @@ class OpenAiChat:
         try:
             self.encoding = tiktoken.encoding_for_model(self.model)
         except KeyError:
-            self.encoding = tiktoken.get_encoding("cl100k_base")
+            self.encoding = tiktoken.get_encoding("gpt-3.5-turbo")
 
         openai.api_key = self.api_key
 
     def num_tokens_from_messages(self, messages: list):
         # Returns the number of tokens used by a list of messages.
-        if (
-            self.model == "gpt-3.5-turbo-0301"
-        ):  # note: future models may deviate from this
+        # if (
+        #     self.model == "gpt-3.5-turbo-0301"
+        # ):  # note: future models may deviate from this
             num_tokens = 0
             for message in messages:
                 # every message follows <im_start>{role/name}\n{content}<im_end>\n
@@ -169,11 +179,11 @@ class OpenAiChat:
                         num_tokens += -1  # role is always required and always 1 token
             num_tokens += 2  # every reply is primed with <im_start>assistant
             return num_tokens
-        else:
-            raise NotImplementedError(
-                f"""num_tokens_from_messages() is not presently implemented for model {self.model}.
-                    See https://github.com/openai/openai-python/blob/main/chatml.md for information on how messages are converted to tokens."""
-            )
+        # else:
+        #     raise NotImplementedError(
+        #         f"""num_tokens_from_messages() is not presently implemented for model {self.model}.
+        #             See https://github.com/openai/openai-python/blob/main/chatml.md for information on how messages are converted to tokens."""
+        #     )
 
     def reduce_messages(self, messages: list, max_tokens=4096):
         cur_tokens = self.num_tokens_from_messages(messages)
@@ -232,7 +242,7 @@ class OpenAiChat:
                 tmp_messages = self.append_prompt(
                     messages=tmp_messages, prompt=prompt)
 
-            response = openai.ChatCompletion.create(
+            response = openai.chat.completions.create(
                 model=self.model, messages=tmp_messages, temperature=self.temperature
             )
 
@@ -253,9 +263,19 @@ class OpenAiChat:
 
             return result
 
-        except openai.error.OpenAIError as e:
+        except openai.APIConnectionError as e:
             logging.error(
-                f"open api error, http_status: {e.http_status}, error: {e.error}"
+                f"open api error,The server could not be reached, error: {e.__cause__}"
+            )
+            raise e
+        except openai.RateLimitError as e:
+            logging.error(
+                f"open api error, A 429 status code was received; we should back off a bit"
+            )
+            raise e
+        except openai.APIStatusError as e:
+            logging.error(
+                f"open api error, http_status: {e.status_code}, error: {e.response}"
             )
             raise e
 
@@ -299,7 +319,8 @@ class OpenAiImage:
 
         try:
             # https://beta.openai.com/docs/api-reference/images/create
-            response = openai.Image.create(
+            response = openai.images.generate(
+                model="dall-e-3",
                 prompt=prompt,
                 n=self.n,
                 size=self.size,
@@ -314,9 +335,19 @@ class OpenAiImage:
 
             return result
 
-        except openai.error.OpenAIError as e:
+        except openai.APIConnectionError as e:
             logging.error(
-                f"open api error, http_status: {e.http_status}, error: {e.error}"
+                f"open api error,The server could not be reached, error: {e.__cause__}"
+            )
+            return "OpenAI API Connection Error"
+        except openai.RateLimitError as e:
+            logging.error(
+                f"open api error, A 429 status code was received; we should back off a bit"
+            )
+            return "A 429 status code was received; we should back off a bit"
+        except openai.APIStatusError as e:
+            logging.error(
+                f"open api error, http_status: {e.status_code}, error: {e.response}"
             )
             return "beep bop. bot beep. Dave? Dave what is going on?"
 
@@ -347,7 +378,8 @@ class OpenAiImage:
 
             try:
                 # https://beta.openai.com/docs/api-reference/images/create-variation
-                response = openai.Image.create_variation(
+                response = openai.images.create_variation(
+                    model="dall-e-2",
                     image=img_buffer,
                     n=self.n,
                     size=self.size,
@@ -360,9 +392,19 @@ class OpenAiImage:
 
                 return result
 
-            except openai.error.OpenAIError as e:
+            except openai.APIConnectionError as e:
                 logging.error(
-                    f"open api error, http_status: {e.http_status}, error: {e.error}"
+                    f"open api error,The server could not be reached, error: {e.__cause__}"
+                )
+                raise e
+            except openai.RateLimitError as e:
+                logging.error(
+                    f"open api error, A 429 status code was received; we should back off a bit"
+                )
+                raise e
+            except openai.APIStatusError as e:
+                logging.error(
+                    f"open api error, http_status: {e.status_code}, error: {e.response}"
                 )
                 raise e
 
@@ -387,13 +429,23 @@ class OpenAiTranscribe:
 
         try:
             audio = open(audio_file, "rb")
-            result = openai.Audio.transcribe(self.model, audio)
+            result = openai.audio.transcriptions.create(self.model, audio)
 
             return result.text
 
-        except openai.error.OpenAIError as e:
+        except openai.APIConnectionError as e:
             logging.error(
-                f"open api error, http_status: {e.http_status}, error: {e.error}"
+                f"open api error,The server could not be reached, error: {e.__cause__}"
+            )
+            raise e
+        except openai.RateLimitError as e:
+            logging.error(
+                f"open api error, A 429 status code was received; we should back off a bit"
+            )
+            raise e
+        except openai.APIStatusError as e:
+            logging.error(
+                f"open api error, http_status: {e.status_code}, error: {e.response}"
             )
             raise e
 

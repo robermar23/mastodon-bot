@@ -1,5 +1,8 @@
-import dropbox
+"""
+Interact with your dropbox account
+"""
 import os
+import dropbox
 import click
 
 class DropBox:
@@ -23,7 +26,7 @@ class DropBox:
                 app_secret = self.client_secret,
                 oauth2_refresh_token = self.refresh_token
             )
-        
+
         listing = self.list_folder(dbx, folder, "")
         return listing
 
@@ -32,13 +35,13 @@ class DropBox:
         Get a file from the folder/subfolder passed
         Return a byte array of the files contents.
         """
-         
+
         dbx = dropbox.Dropbox(
                 app_key = self.client_id,
                 app_secret = self.client_secret,
                 oauth2_refresh_token = self.refresh_token
             )
-        
+
         file = self.download(dbx=dbx, folder=folder, subfolder=subfolder, name=name)
         return file
 
@@ -61,7 +64,7 @@ class DropBox:
         except Exception as e:
             click.echo(e)
             return {}
-        
+
         rv = {}
         for entry in res.entries:
             rv[entry.name] = entry
@@ -81,3 +84,4 @@ class DropBox:
             return None
         data = res.content
         return data
+    

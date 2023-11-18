@@ -1,3 +1,6 @@
+"""
+Interact with a plex server
+"""
 import logging
 import urllib.parse
 
@@ -18,7 +21,9 @@ class PlexInstance:
         self.plex_server_id = plex_server_id
 
     def get_recently_added(self, hours_since: int):
-
+        """
+        Get recently added media items
+        """
         result = []
 
         plex = PlexServer(self.plex_host, self.plex_token)
@@ -34,11 +39,9 @@ class PlexInstance:
                         media_item=media_item, server_id=self.plex_server_id
                     )
                     result.append(item_to_add)
-                    logging.debug(f"Added to result: {media_item.title}")
+                    logging.debug("Added to result: %s", media_item.title)
                 else:
-                    logging.debug(
-                        f"Not added: {media_item.title}, added {hours_age} hours ago"
-                    )
+                    logging.debug("Not added: %s, added %s hours ago", media_item.title, hours_age)
 
         except Exception as e:
             logging.error(error_info(e))
@@ -56,6 +59,9 @@ class PlexRecentlyAddedItem:
         self.server_id = server_id
 
     def get_description(self):
+        """
+        Get the description for this item
+        """
         desc: str = ""
         if self.media_item.type == "season":
             desc = f"A new episode was added to Plex for {self.media_item.parentTitle}!\n\n{self.get_public_uri()}"
@@ -64,11 +70,20 @@ class PlexRecentlyAddedItem:
         return desc
 
     def get_poster_image_data(self):
+        """
+        Get the poster image for this item
+        """
         content_data, file_extension = download_remote_file(self.media_item.posterUrl)
         return content_data
 
     def get_post_image_file_name(self):
+        """
+        Get the file name for the poster image for this item
+        """
         return f"{self.media_item.title.replace(' ', '_')}.png"
 
     def get_public_uri(self):
+        """
+        Get the public URI for this item
+        """
         return f"https://app.plex.tv/desktop/#!/server/{self.server_id}/details?key={urllib.parse.quote(self.media_item.key, safe='')}&context=home%3Ahub.movie.recentlyadded~1~0"

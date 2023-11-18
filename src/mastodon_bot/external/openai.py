@@ -100,8 +100,8 @@ class OpenAiPrompt:
                 presence_penalty=self.presence_penalty,
             )
 
-            if "choices" in response and len(response["choices"]) > 0:
-                result = response["choices"][0].text
+            if response.choices and len(response.choices) > 0:
+                result = response.choices[0].message.content
 
             else:
                 logging.debug(f"response unexpected: {response}")
@@ -166,19 +166,19 @@ class OpenAiChat:
         # if (
         #     self.model == "gpt-3.5-turbo-0301"
         # ):  # note: future models may deviate from this
-            num_tokens = 0
-            for message in messages:
-                # every message follows <im_start>{role/name}\n{content}<im_end>\n
-                num_tokens += 4
-                # logging.debug(f"message: {message}")
-                # logging.debug(f"message type: {type(message)}")
+        num_tokens = 0
+        for message in messages:
+            # every message follows <im_start>{role/name}\n{content}<im_end>\n
+            num_tokens += 4
+            # logging.debug(f"message: {message}")
+            # logging.debug(f"message type: {type(message)}")
 
-                for key, value in message.items():
-                    num_tokens += len(self.encoding.encode(value))
-                    if key == "name":  # if there's a name, the role is omitted
-                        num_tokens += -1  # role is always required and always 1 token
-            num_tokens += 2  # every reply is primed with <im_start>assistant
-            return num_tokens
+            for key, value in message.items():
+                num_tokens += len(self.encoding.encode(value))
+                if key == "name":  # if there's a name, the role is omitted
+                    num_tokens += -1  # role is always required and always 1 token
+        num_tokens += 2  # every reply is primed with <im_start>assistant
+        return num_tokens
         # else:
         #     raise NotImplementedError(
         #         f"""num_tokens_from_messages() is not presently implemented for model {self.model}.
@@ -246,14 +246,8 @@ class OpenAiChat:
                 model=self.model, messages=tmp_messages, temperature=self.temperature
             )
 
-            if "choices" in response and len(response["choices"]) > 0:
-                if "message" in response["choices"][0]:
-                    if "content" in response["choices"][0]["message"]:
-                        result = response["choices"][0]["message"]["content"]
-                    else:
-                        logging.debug(f"response unexpected: {response}")
-                else:
-                    logging.debug(f"response unexpected: {response}")
+            if "choices" in response and len(response.choices) > 0:
+                result = response.choices[0].message.content
             else:
                 logging.debug(f"response unexpected: {response}")
 
@@ -306,6 +300,8 @@ class OpenAiImage:
         self.size = f"{self.height}x{self.width}"
         self.api_key = openai_api_key
         self.response_format = "b64_json"
+        self.style = "vivid"
+        self.quality = "hd"
         openai.api_key = self.api_key
 
     def create(self, prompt):
@@ -324,11 +320,13 @@ class OpenAiImage:
                 prompt=prompt,
                 n=self.n,
                 size=self.size,
+                style=self.style,
+                quality=self.quality,
                 response_format=self.response_format,
             )
 
-            if "data" in response and len(response["data"]) > 0:
-                b64 = response["data"][0].b64_json
+            if response.data is not None and len(response.data) > 0:
+                b64 = response.data[0].b64_json
                 result = base64.b64decode(b64)
             else:
                 logging.debug(f"response unexpected: {response}")
@@ -386,8 +384,8 @@ class OpenAiImage:
                     response_format=self.response_format,
                 )
 
-                if "data" in response and len(response["data"]) > 0:
-                    b64 = response["data"][0].b64_json
+                if response.data and len(response.data) > 0:
+                    b64 = response.data[0].b64_json
                     result = base64.b64decode(b64)
 
                 return result

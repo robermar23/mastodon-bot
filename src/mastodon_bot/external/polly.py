@@ -2,7 +2,6 @@ import os
 import logging
 import boto3
 from botocore.exceptions import BotoCoreError, ClientError
-from botocore.exceptions import ClientError
 from contextlib import closing
 from tempfile import gettempdir
 
@@ -64,7 +63,7 @@ class PollyWrapper:
 
         except (BotoCoreError, ClientError) as e:
             # The service returned an error, exit gracefully
-            logging.error(f"aws polly error, {e.error}")
+            logging.error(f"aws polly error, {e}")
             raise e
 
         return task_id
@@ -118,7 +117,7 @@ class PollyWrapper:
 
         except (BotoCoreError) as e:
             # The service returned an error, exit gracefully
-            logging.error(f"aws polly error, {e.error}")
+            logging.error(f"aws polly error, {e}")
             raise e
 
     def get_voices(self):

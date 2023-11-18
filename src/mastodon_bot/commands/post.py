@@ -146,7 +146,7 @@ def handle_dropbox_post(dropbox_client_id, dropbox_client_secret, dropbox_refres
 
     if openai_api_key and openai_default_completion:
         chat = openai.OpenAiChat(openai_api_key)
-        status_post = chat.create(openai_default_completion)
+        status_post = chat.create(openai_default_completion, "1")
 
     toot = mastodon_api.status_post(
             status_post,

@@ -59,7 +59,7 @@ class OpenAiPrompt:
         result = None
 
         #change this to use lazy formatting for logging
-        logging.debug(format("creating chat with prompt %s", prompt))
+        logging.debug("creating chat with prompt %s", prompt)
 
         try:
             tmp_context: str = ""
@@ -68,19 +68,19 @@ class OpenAiPrompt:
 
             estimate_tokens_context = self.estimate_tokens(text=tmp_context)
             if estimate_tokens_context >= self.max_tokens * 0.95:
-                logging.debug(format("context size exceeded! context\n %s", tmp_context))
+                logging.debug("context size exceeded! context\n %s", tmp_context)
                 logging.debug(estimate_tokens_context)
 
                 self.context[convo_id] = self.reduce_context(tmp_context)
-                logging.debug(format("Reduced context to: %s", self.context[convo_id]))
+                logging.debug("Reduced context to: %s", self.context[convo_id])
 
             estimate_tokens_prompt = self.estimate_tokens(prompt)
             if estimate_tokens_prompt >= self.max_tokens * 0.95:
-                logging.debug(format("prompt size exceeded! prompt\n %s", prompt))
+                logging.debug("prompt size exceeded! prompt\n %s", prompt)
                 logging.debug(estimate_tokens_prompt)
 
                 prompt = self.reduce_context(prompt)
-                logging.debug(format("Reduced prompt to: %s", prompt))
+                logging.debug("Reduced prompt to: %s", prompt)
 
             # for maintaining context/history of chat, using passed convo_id as key
             if keep_context:
@@ -109,17 +109,17 @@ class OpenAiPrompt:
                 result = response.choices[0].message.content
 
             else:
-                logging.debug(format("response unexpected: %s", response))
+                logging.debug("response unexpected: %s", response)
 
             return result
         except openai.APIConnectionError as e:
-            logging.debug(format("open api error,The server could not be reached, error: %s", e.__cause__))
+            logging.debug("open api error,The server could not be reached, error: %s", e.__cause__)
             return "OpenAI API Connection Error"
         except openai.RateLimitError:
             logging.debug("open api error, A 429 status code was received; we should back off a bit")
             return "A 429 status code was received; we should back off a bit"
         except openai.APIStatusError as e:
-            logging.debug(format("open api error, http_status: %s, error: %s", e.status_code, e.response))
+            logging.debug("open api error, http_status: %s, error: %s", e.status_code, e.response)
             return "beep bop. bot beep. Dave? Dave what is going on?"
 
 
@@ -205,7 +205,7 @@ class OpenAiChat:
         """
 
         result = None
-        logging.debug(format("creating chat with prompt %s", prompt))
+        logging.debug("creating chat with prompt %s", prompt)
 
         # Example OpenAI Python library request
         # MODEL = "gpt-3.5-turbo"
@@ -230,7 +230,7 @@ class OpenAiChat:
             cur_tokens, mod_tokens = self.reduce_messages(
                 messages=tmp_messages)
             if cur_tokens > mod_tokens:
-                logging.debug(format("max tokens exceeded! reduced by %s", cur_tokens - mod_tokens))
+                logging.debug("max tokens exceeded! reduced by %s", cur_tokens - mod_tokens)
 
             # for maintaining context/history of chat, using passed convo_id as key
             msg_len = len(tmp_messages)
@@ -251,7 +251,7 @@ class OpenAiChat:
             if response.choices and len(response.choices) > 0:
                 result = response.choices[0].message.content
             else:
-                logging.debug(format("response unexpected: %s", response))
+                logging.debug("response unexpected: %s", response)
 
             self.context[convo_id] = self.append_response(
                 messages=tmp_messages, response=result
@@ -260,13 +260,13 @@ class OpenAiChat:
             return result
 
         except openai.APIConnectionError as e:
-            logging.debug(format("open api error,The server could not be reached, error: %s", e.__cause__))
+            logging.debug("open api error,The server could not be reached, error: %s", e.__cause__)
             raise e
         except openai.RateLimitError as e:
             logging.debug("open api error, A 429 status code was received; we should back off a bit")
             raise e
         except openai.APIStatusError as e:
-            logging.debug(format("open api error, http_status: %s, error: %s", e.status_code, e.response))
+            logging.debug("open api error, http_status: %s, error: %s", e.status_code, e.response)
             raise e
 
     def init_messages(self, prompt):
@@ -316,7 +316,7 @@ class OpenAiImage:
 
         result = None
 
-        logging.debug(format("creating image with prompt %s", prompt))
+        logging.debug("creating image with prompt %s", prompt)
 
         try:
             # https://beta.openai.com/docs/api-reference/images/create
@@ -334,18 +334,18 @@ class OpenAiImage:
                 b64 = response.data[0].b64_json
                 result = base64.b64decode(b64)
             else:
-                logging.debug(format("response unexpected: %s", response))
+                logging.debug("response unexpected: %s", response)
 
             return result
 
         except openai.APIConnectionError as e:
-            logging.debug(format("open api error,The server could not be reached, error: %s", e.__cause__))
+            logging.debug("open api error,The server could not be reached, error: %s", e.__cause__)
             return "OpenAI API Connection Error"
         except openai.RateLimitError:
             logging.debug("open api error, A 429 status code was received; we should back off a bit")
             return "A 429 status code was received; we should back off a bit"
         except openai.APIStatusError as e:
-            logging.debug(format("open api error, http_status: %s, error: %s", e.status_code, e.response))
+            logging.debug("open api error, http_status: %s, error: %s", e.status_code, e.response)
             return "beep bop. bot beep. Dave? Dave what is going on?"
 
     def variation(self, image):
@@ -364,7 +364,7 @@ class OpenAiImage:
 
             # convert to png for submission, if necessary
             if img_convert.format != "PNG":
-                logging.debug(format("converting image to png as format is %s", img_convert.format))
+                logging.debug("converting image to png as format is %s", img_convert.format)
                 img_convert = img_convert.convert("RGB")
 
             img_buffer = BytesIO()
@@ -388,13 +388,13 @@ class OpenAiImage:
                 return result
 
             except openai.APIConnectionError as e:
-                logging.debug(format("open api error,The server could not be reached, error: %s", e.__cause__))
+                logging.debug("open api error,The server could not be reached, error: %s", e.__cause__)
                 raise e
             except openai.RateLimitError as e:
                 logging.debug("open api error, A 429 status code was received; we should back off a bit")
                 raise e
             except openai.APIStatusError as e:
-                logging.debug(format("open api error, http_status: %s, error: %s", e.status_code, e.response))
+                logging.debug("open api error, http_status: %s, error: %s", e.status_code, e.response)
                 raise e
 
 class OpenAiTranscribe:
@@ -414,7 +414,7 @@ class OpenAiTranscribe:
 
         result = None
 
-        logging.debug(format("creating transcription from audio file %s", audio_file))
+        logging.debug("creating transcription from audio file %s", audio_file)
 
         try:
             audio = open(audio_file, "rb")
@@ -423,11 +423,11 @@ class OpenAiTranscribe:
             return result.text
 
         except openai.APIConnectionError as e:
-            logging.debug(format("open api error,The server could not be reached, error: %s", e.__cause__))
+            logging.debug("open api error,The server could not be reached, error: %s", e.__cause__)
             raise e
         except openai.RateLimitError as e:
             logging.debug("open api error, A 429 status code was received; we should back off a bit")
             raise e
         except openai.APIStatusError as e:
-            logging.debug(format("open api error, http_status: %s, error: %s", e.status_code, e.response))
+            logging.debug("open api error, http_status: %s, error: %s", e.status_code, e.response)
             raise e

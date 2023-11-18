@@ -1,8 +1,8 @@
-import json
-
 """
 CLI get command.
 """
+
+import json
 import click
 from mastodon_bot.external.polly import PollyWrapper
 

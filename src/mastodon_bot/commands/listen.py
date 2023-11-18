@@ -1,29 +1,30 @@
 """
 CLI Post to Mastodon.  Source of post based off of parameters passed command.
 """
+import logging
 import click
 import mastodon
-import logging
+from bs4 import BeautifulSoup
+from rq import Queue, Retry
+from redis import Redis
 from mastodon import Mastodon
 from mastodon_bot.util import error_info
 from mastodon_bot.worker import listener_respond
 from mastodon_bot.lib.listen.listener_config import ListenerConfig
 from mastodon_bot.lib.listen.listener_response_type import ListenerResponseType
-from bs4 import BeautifulSoup
-from rq import Queue, Retry
-from redis import Redis
-
 
 class Listener(mastodon.StreamListener):
+    """
+    Listener class to handle Mastodon events
+    """
     def __init__(self, **kwargs):
         self.config = ListenerConfig(**kwargs)
         self.mastodon_api = kwargs.get("mastodon_api", None)
-
-        logging.info(f"{self.config.response_type}, Listening...")
+        logging.info("%s, Listening...", self.config.response_type)
 
     def on_update(self, status):
 
-        logging.debug(f"on_update: {status}")
+        logging.debug("on_update: %s", status)
 
         status_id = None
         in_reply_to_id = None
@@ -37,18 +38,16 @@ class Listener(mastodon.StreamListener):
 
         if "content" in status:
 
-            logging.debug(f"pre BeautifulSoup content: {status['content']}")
+            logging.debug("pre BeautifulSoup content: %s", status["content"])
 
             inner_content = BeautifulSoup(
                 status["content"], "html.parser").text
 
             if "media_attachments" in status and len(status["media_attachments"]) > 0:
                 image_url = status["media_attachments"][0].url
-                logging.debug(f"image_url: {image_url}")
+                logging.debug("image_url: %s", image_url)
 
-            logging.info(
-                f"on_update: { status_id}, in_reply_to_id: {in_reply_to_id} \n content: {inner_content}"
-            )
+            logging.info("on_update: %s, in_reply_to_id: %s \n content: %s", status_id, in_reply_to_id, inner_content)
 
             if not status["account"]["bot"]:
                 self.enqueue_response(

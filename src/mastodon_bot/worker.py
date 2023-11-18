@@ -55,7 +55,7 @@ def listener_respond(
     for word in words_to_filter:
         filtered_content = remove_word(string=filtered_content, word=word)
 
-    logging.debug(format("responding with %s", config.response_type))
+    logging.debug("responding with %s", config.response_type)
 
     if config.response_type == ListenerResponseType.REVERSE_STRING:
         response_content = filtered_content[::-1]
@@ -139,7 +139,7 @@ def listener_respond(
 
         if image_url is not None and len(image_url) > 0:
 
-            logging.debug(format("Transcribing from uploaded file: %s", image_url))
+            logging.debug("Transcribing from uploaded file: %s", image_url)
             response_content = get_transcribe_response_content(
                 mastodon_api=mastodon_api,
                 in_reply_to_id=in_reply_to_id,
@@ -148,7 +148,7 @@ def listener_respond(
                 audio_url=image_url
             )
         else:
-            logging.debug(format("Transcribing from posted content: %s", filtered_content))
+            logging.debug("Transcribing from posted content: %s", filtered_content)
             response_content = ""
             # attempt to get url(s) to transcribe from content of post
             uris_to_try = extract_uris(content=filtered_content)
@@ -163,7 +163,7 @@ def listener_respond(
                     )
                     response_content += f"{uri}: \n\n {transcribed}\n\n"
                 except Exception as e:
-                    logging.error(format("Error trying to transcribe %s: %s", uri, e))
+                    logging.error("Error trying to transcribe %s: %s", uri, e)
 
         if len(response_content) > 1000:
             logging.debug("Response content is long, posting link to transcription file")
@@ -177,7 +177,7 @@ def listener_respond(
         response_content = prepare_text_to_speech_content(
             in_reply_to_id, config, filtered_content, response_content, media_ids, mastodon_api)
 
-    logging.debug(format("status_post: %s", response_content))
+    logging.debug("status_post: %s", response_content)
 
     # last chance to make sure we reply to correct convo
     if in_reply_to_id is None:
@@ -295,7 +295,7 @@ def prepare_text_to_speech_content(in_reply_to_id, config, filtered_content, res
                         response_content += f"\n\n{speech_content}\n\n"
 
             except Exception as e:
-                logging.error(format("Error trying to transcribe %s: %s", uri, e))
+                logging.error("Error trying to transcribe %s: %s", uri, e)
     else:
         response_content = get_speech_response_content(mastodon_api=mastodon_api,
                                                        media_ids=media_ids,
@@ -328,7 +328,7 @@ def unroll_response_content(in_reply_to_id, status_id, config, filtered_content,
 
     s3_url = s3.upload_string_to_s3(html_full, s3_file_name)
 
-    logging.debug(format("s3_url: %s", s3_url))
+    logging.debug("s3_url: %s", s3_url)
 
     return f"\n\n  View unrolled: {s3_url}"
 
@@ -409,7 +409,7 @@ def get_transcribe_response_content(mastodon_api, openai_api_key, in_reply_to_id
         transcribe_result = transcribe_ai.create(audio_file=temp_file_path)
 
     except Exception as e:
-        logging.error(format("Error trying to transcribe %s: %s", audio_url, e))
+        logging.error("Error trying to transcribe %s: %s", audio_url, e)
         transcribe_result = f"Error trying to transcribe {audio_url}"
 
     finally:
@@ -429,7 +429,7 @@ def get_image_response_content(mastodon_api, openai_api_key, image_url, filtered
 
     if image_url:
         image_byes, file_extension = download_remote_file(image_url)
-        logging.debug(format("file_extension: %s", file_extension))
+        logging.debug("file_extension: %s", file_extension)
 
     if image_url and filtered_content == "variation":
         image_result = image_ai.variation(image=image_byes)
@@ -441,7 +441,7 @@ def get_image_response_content(mastodon_api, openai_api_key, image_url, filtered
         image_result = image_ai.create(filtered_content)
 
     image_name = filtered_content.replace(" ", "_") + ".png"
-    logging.debug(format("image_name: %s", image_name))
+    logging.debug("image_name: %s", image_name)
 
     ai_media_post = mastodon_api.media_post(
         media_file=image_result,
@@ -470,10 +470,10 @@ def get_speech_response_content(mastodon_api, media_ids, config, filtered_conten
     speak_direct = polly_wrapper.speak(
         text=filtered_content, voice_id=voice_id, out_file=temp_file_path)
     if speak_direct is False:
-        logging.debug(format("enqueing polly task due to large text {temp_file_name}"))
+        logging.debug("enqueing polly task due to large text {temp_file_name}")
         polly_task_id = polly_wrapper.start_speak(text=filtered_content, voice_id=config.aws_polly_voice_id,
                                                   output_bucket=config.mastodon_s3_bucket_name, output_key_prefix=config.mastodon_s3_bucket_prefix_path)
-        logging.info(format("enqueuing polly status job: {polly_task_id} {in_reply_to_id}"))
+        logging.info("enqueuing polly status job: {polly_task_id} {in_reply_to_id}")
         redis_conn = redis.from_url(config.rq_redis_connection)
         queue = Queue(config.rq_queue_name, connection=redis_conn)
         queue.enqueue(
@@ -490,7 +490,7 @@ def get_speech_response_content(mastodon_api, media_ids, config, filtered_conten
         )
         response_content = "AWS Polly task enqueued, please wait..."
     else:
-        logging.debug(format("posting media to mastodon with name %s", temp_file_name))
+        logging.debug("posting media to mastodon with name %s", temp_file_name)
 
         # attempt to post to mastodon with audio file.
         # if to large, exception will be raised and we then upload to s3 and return link
@@ -504,7 +504,7 @@ def get_speech_response_content(mastodon_api, media_ids, config, filtered_conten
             )
             media_ids.append(ai_media_post["id"])
         except MastodonAPIError as e:
-            logging.error(format("MastodonAPIError: %s", e))
+            logging.error("MastodonAPIError: %s", e)
             logging.info("Uploading to S3 and returning link instead")
 
             # also post to s3:
